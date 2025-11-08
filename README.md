@@ -2,7 +2,7 @@
 
 **Professional Point Cloud Processing Web Application**
 
-A high-performance, web-based point cloud processing application built with Rust and Three.js, featuring a beautiful Glass Morphism UI design. Process millions of points with PCL-like functionality directly in your browser.
+A high-performance, web-based point cloud processing application built with Rust and Three.js, featuring a clean Material Design UI. Process millions of points with PCL-like functionality directly in your browser.
 
 ![AutoPointCloud](https://img.shields.io/badge/Version-0.1.0-blue)
 ![Rust](https://img.shields.io/badge/Rust-1.70+-orange)
@@ -10,10 +10,12 @@ A high-performance, web-based point cloud processing application built with Rust
 
 ## 📸 Screenshots & Demo
 
-### Professional Glass Morphism Interface
-![AutoPointCloud Interface](https://github.com/user-attachments/assets/829153b8-d60a-44c7-8e84-663b9f6a1813)
+### Material Design Interface
+![AutoPointCloud Interface](https://github.com/user-attachments/assets/1b786826-7267-4770-ac98-db489a0f185f)
 
-The application features a modern, professional interface with:
+The application features a clean, modern Material Design interface with:
+- **Material Design UI**: Professional design following Material Design principles
+- **Blue, White & Green Theme**: Fresh, modern color scheme
 - **Drag-and-drop upload zone** for easy file import
 - **Real-time point cloud list** showing all loaded datasets
 - **Processing controls** with multiple filter options
@@ -58,9 +60,11 @@ The KITTI-style demo scene includes:
 
 ## ✨ Features
 
-### 🎨 Professional Glass Morphism UI
-- Beautiful Apple-inspired Glass UI design
+### 🎨 Clean Material Design UI
+- Professional Material Design interface
+- Blue, white, and green color scheme
 - Responsive layout with intuitive controls
+- Material Icons for clear visual communication
 - Real-time statistics and FPS monitoring
 - Smooth animations and transitions
 - Drag-and-drop file upload
@@ -106,8 +110,9 @@ Export your processed point clouds to multiple formats:
 - **Backend**: Rust with Actix-web 4.x
 - **Frontend**: Three.js r160, Vanilla JavaScript ES6+
 - **Processing**: Rayon for parallel algorithms
-- **UI Design**: Custom Glass Morphism CSS
-- **Fonts**: Inter (Google Fonts)
+- **UI Design**: Material Design with custom CSS
+- **Fonts**: Roboto (Google Fonts)
+- **Icons**: Material Icons
 
 ## 📦 Installation
 
@@ -157,6 +162,38 @@ The application will start on `http://127.0.0.1:8080`
 5. **Export results**:
    - Click the screenshot button (📸) to capture the current view
    - Images are automatically downloaded
+
+## 🌐 Deployment
+
+AutoPointCloud can be deployed to various platforms. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
+### Quick Deployment Options
+
+**Fly.io (Recommended for Rust)**
+```bash
+flyctl launch
+flyctl deploy
+```
+
+**Railway**
+- Connect your GitHub repository
+- Railway auto-detects and deploys Rust apps
+
+**Docker**
+```bash
+docker build -t autopointcloud .
+docker run -p 8080:8080 autopointcloud
+```
+
+**See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment guides including:**
+- Fly.io setup and scaling
+- Railway deployment
+- Render deployment
+- Docker configuration
+- Traditional VPS deployment
+- CI/CD with GitHub Actions
+- Custom domain setup
+- Monitoring and maintenance
 
 ## 📖 API Documentation
 

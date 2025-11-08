@@ -1,0 +1,46 @@
+# Netlify Configuration for AutoPointCloud
+# Note: This is a Rust backend application. Netlify is optimized for static sites.
+# For full functionality, consider deploying to platforms that support Rust backends:
+# - Fly.io (recommended for Rust apps)
+# - Railway.app
+# - Render.com
+# - Heroku with Rust buildpack
+
+# This configuration is provided for reference and static frontend deployment only
+# The backend API will not be available on Netlify
+
+[build]
+  # Since this is a Rust application, we can't build it directly on Netlify
+  # This would require compiling the Rust binary which Netlify doesn't support well
+  command = "echo 'Note: Full stack deployment requires a Rust-compatible platform. See README for deployment options.'"
+  publish = "static"
+
+# Redirect rules for SPA behavior (if deploying static frontend only)
+[[redirects]]
+  from = "/*"
+  to = "/app.html"
+  status = 200
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "no-referrer-when-downgrade"
+
+# Note: For production deployment of the full application (backend + frontend):
+# 1. Use Fly.io: https://fly.io (Best for Rust)
+#    - flyctl launch
+#    - flyctl deploy
+# 
+# 2. Use Railway: https://railway.app
+#    - Connect your GitHub repo
+#    - Railway will auto-detect Rust and build
+# 
+# 3. Use Render: https://render.com
+#    - Create a new Web Service
+#    - Select Rust environment
+#    - Build command: cargo build --release
+#    - Start command: ./target/release/autopointcloud

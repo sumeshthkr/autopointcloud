@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+target/
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+FEATURES.md
+EXAMPLES.md
+EXPORT_GUIDE.md
+
+# Demo data (optional, remove if you want to include it)
+demo_data/
+test_data/
+
+# Temporary files
+tmp/
+*.tmp
