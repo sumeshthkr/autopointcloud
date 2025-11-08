@@ -1,13 +1,13 @@
-use std::sync::Mutex;
-use std::collections::HashMap;
-use actix_web::{web, App, HttpServer, Responder, HttpResponse};
-use actix_files::Files;
 use actix_cors::Cors;
-use log::info;
+use actix_files::Files;
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use anyhow::Result;
+use log::info;
+use std::collections::HashMap;
+use std::sync::Mutex;
 
-mod pointcloud;
 mod handlers;
+mod pointcloud;
 mod processing;
 
 use crate::pointcloud::PointCloud;
@@ -42,9 +42,9 @@ async fn health_check() -> impl Responder {
 #[actix_web::main]
 async fn main() -> Result<()> {
     env_logger::init();
-    
+
     info!("Starting AutoPointCloud web application...");
-    
+
     let app_state = web::Data::new(AppState {
         pointclouds: Mutex::new(HashMap::new()),
     });
@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
             .allow_any_origin()
             .allow_any_method()
             .allow_any_header();
-            
+
         App::new()
             .app_data(app_state.clone())
             .wrap(cors)
@@ -67,10 +67,16 @@ async fn main() -> Result<()> {
                     .route("/upload", web::post().to(upload_pointcloud))
                     .route("/pointclouds", web::get().to(list_pointclouds))
                     .route("/pointclouds/{id}", web::get().to(get_pointcloud_info))
-                    .route("/pointclouds/{id}/points", web::get().to(get_pointcloud_points))
+                    .route(
+                        "/pointclouds/{id}/points",
+                        web::get().to(get_pointcloud_points),
+                    )
                     .route("/pointclouds/{id}/export", web::get().to(export_pointcloud))
                     .route("/pointclouds/{id}", web::delete().to(delete_pointcloud))
-                    .route("/pointclouds/{id}/process", web::post().to(process_pointcloud))
+                    .route(
+                        "/pointclouds/{id}/process",
+                        web::post().to(process_pointcloud),
+                    ),
             )
     })
     .bind("127.0.0.1:8080")?

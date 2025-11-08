@@ -8,21 +8,25 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         :root {
-            --primary: #667eea;
-            --primary-dark: #5568d3;
-            --secondary: #764ba2;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --glass-bg: rgba(255, 255, 255, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.18);
-            --shadow: rgba(0, 0, 0, 0.1);
-            --text-primary: #1f2937;
-            --text-secondary: #6b7280;
-            --background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --primary-blue: #1976D2;
+            --primary-blue-dark: #1565C0;
+            --primary-blue-light: #42A5F5;
+            --success-green: #4CAF50;
+            --success-green-dark: #388E3C;
+            --success-green-light: #81C784;
+            --white: #FFFFFF;
+            --background: #F5F5F5;
+            --text-primary: #212121;
+            --text-secondary: #757575;
+            --divider: #E0E0E0;
+            --shadow-light: rgba(0, 0, 0, 0.12);
+            --shadow-medium: rgba(0, 0, 0, 0.16);
+            --error: #F44336;
+            --warning: #FF9800;
         }
 
         * {
@@ -32,77 +36,82 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--background);
             min-height: 100vh;
             color: var(--text-primary);
             overflow-x: hidden;
         }
 
-        /* Glass Morphism Card */
-        .glass {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border-radius: 16px;
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 8px 32px 0 var(--shadow);
+        /* Material Design Card */
+        .card {
+            background: var(--white);
+            border-radius: 4px;
+            box-shadow: 0 2px 4px var(--shadow-light), 0 4px 8px var(--shadow-medium);
+        }
+
+        .card-elevated {
+            box-shadow: 0 4px 8px var(--shadow-light), 0 8px 16px var(--shadow-medium);
         }
 
         /* Layout */
         .app-container {
             display: grid;
-            grid-template-columns: 350px 1fr;
+            grid-template-columns: 320px 1fr;
             grid-template-rows: auto 1fr;
             height: 100vh;
-            gap: 20px;
-            padding: 20px;
+            gap: 16px;
+            padding: 0;
         }
 
-        /* Header */
+        /* Header - Material Design App Bar */
         .header {
             grid-column: 1 / -1;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 20px 30px;
+            padding: 0 24px;
+            height: 64px;
+            background: var(--primary-blue);
+            color: var(--white);
+            box-shadow: 0 2px 4px var(--shadow-light);
         }
 
         .logo {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
         }
 
         .logo-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            border-radius: 12px;
+            width: 40px;
+            height: 40px;
+            background: var(--white);
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
+            color: var(--primary-blue);
             font-weight: 700;
-            font-size: 24px;
+            font-size: 20px;
         }
 
         .logo-text h1 {
-            font-size: 24px;
-            font-weight: 700;
-            color: white;
-            margin-bottom: 2px;
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--white);
+            margin-bottom: 0;
         }
 
         .logo-text p {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255, 255, 255, 0.87);
             font-weight: 400;
         }
 
         .header-actions {
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
 
         /* Sidebar */
@@ -110,151 +119,170 @@
             grid-row: 2;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            max-height: calc(100vh - 140px);
+            gap: 16px;
+            max-height: calc(100vh - 80px);
             overflow-y: auto;
+            padding: 16px;
+            background: var(--background);
         }
 
         .panel {
-            padding: 24px;
+            padding: 16px;
         }
 
         .panel-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--divider);
         }
 
         .panel-title {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 16px;
+            font-weight: 500;
             color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title .material-icons {
+            font-size: 20px;
+            color: var(--primary-blue);
         }
 
         /* Upload Section */
         .upload-zone {
-            border: 2px dashed rgba(102, 126, 234, 0.3);
-            border-radius: 12px;
-            padding: 32px;
+            border: 2px dashed var(--divider);
+            border-radius: 4px;
+            padding: 24px;
             text-align: center;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             cursor: pointer;
-            background: rgba(102, 126, 234, 0.02);
+            background: var(--white);
         }
 
         .upload-zone:hover,
         .upload-zone.dragover {
-            border-color: var(--primary);
-            background: rgba(102, 126, 234, 0.05);
-            transform: translateY(-2px);
+            border-color: var(--primary-blue);
+            background: #E3F2FD;
         }
 
         .upload-icon {
             font-size: 48px;
             margin-bottom: 12px;
-            opacity: 0.6;
+            color: var(--primary-blue);
         }
 
         .upload-text {
             font-size: 14px;
-            color: var(--text-secondary);
+            color: var(--text-primary);
             margin-bottom: 4px;
         }
 
         .upload-formats {
             font-size: 12px;
             color: var(--text-secondary);
-            opacity: 0.7;
         }
 
-        /* Buttons */
+        /* Material Buttons */
         .btn {
-            padding: 10px 20px;
+            padding: 8px 16px;
             border: none;
-            border-radius: 8px;
+            border-radius: 4px;
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             display: inline-flex;
             align-items: center;
             gap: 8px;
             text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
+            background: var(--success-green);
+            color: var(--white);
+            box-shadow: 0 2px 4px var(--shadow-light);
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            background: var(--success-green-dark);
+            box-shadow: 0 4px 8px var(--shadow-medium);
         }
 
         .btn-secondary {
-            background: rgba(102, 126, 234, 0.1);
-            color: var(--primary);
+            background: transparent;
+            color: var(--primary-blue);
         }
 
         .btn-secondary:hover {
-            background: rgba(102, 126, 234, 0.15);
+            background: #E3F2FD;
         }
 
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-            transform: none !important;
+            box-shadow: none;
         }
 
         .btn-icon {
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             padding: 0;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            border-radius: 50%;
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         /* Point Cloud List */
         .cloud-list {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
             max-height: 300px;
             overflow-y: auto;
         }
 
         .cloud-item {
-            padding: 16px;
-            border-radius: 10px;
-            background: rgba(102, 126, 234, 0.04);
-            border: 1px solid rgba(102, 126, 234, 0.1);
+            padding: 12px;
+            border-radius: 4px;
+            background: var(--white);
+            border: 1px solid var(--divider);
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
 
         .cloud-item:hover {
-            background: rgba(102, 126, 234, 0.08);
-            transform: translateX(4px);
+            background: #E3F2FD;
+            border-color: var(--primary-blue-light);
         }
 
         .cloud-item.active {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
-            border-color: transparent;
+            background: var(--primary-blue);
+            color: var(--white);
+            border-color: var(--primary-blue-dark);
+            box-shadow: 0 2px 4px var(--shadow-light);
         }
 
         .cloud-name {
-            font-weight: 600;
+            font-weight: 500;
             margin-bottom: 8px;
             font-size: 14px;
         }
 
         .cloud-meta {
             font-size: 12px;
-            opacity: 0.8;
+            opacity: 0.87;
             display: flex;
             flex-wrap: wrap;
             gap: 12px;
@@ -266,40 +294,46 @@
             gap: 4px;
         }
 
-        /* Form Controls */
+        .cloud-meta-item .material-icons {
+            font-size: 14px;
+        }
+
+        /* Material Form Controls */
         .form-group {
             margin-bottom: 16px;
         }
 
         .form-label {
             display: block;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
-            color: var(--text-primary);
+            color: var(--text-secondary);
             margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .form-control {
             width: 100%;
-            padding: 10px 14px;
-            border: 1px solid rgba(102, 126, 234, 0.2);
-            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid var(--divider);
+            border-radius: 4px;
             font-size: 14px;
             font-family: inherit;
-            background: white;
-            transition: all 0.3s ease;
+            background: var(--white);
+            transition: all 0.2s ease;
         }
 
         .form-control:focus {
             outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
         }
 
-        /* Status Messages */
+        /* Material Status Messages */
         .status {
             padding: 12px 16px;
-            border-radius: 8px;
+            border-radius: 4px;
             font-size: 13px;
             margin-top: 12px;
             display: flex;
@@ -308,21 +342,21 @@
         }
 
         .status-success {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.2);
+            background: #E8F5E9;
+            color: var(--success-green-dark);
+            border: 1px solid var(--success-green-light);
         }
 
         .status-error {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger);
-            border: 1px solid rgba(239, 68, 68, 0.2);
+            background: #FFEBEE;
+            color: var(--error);
+            border: 1px solid #EF9A9A;
         }
 
         .status-info {
-            background: rgba(102, 126, 234, 0.1);
-            color: var(--primary);
-            border: 1px solid rgba(102, 126, 234, 0.2);
+            background: #E3F2FD;
+            color: var(--primary-blue-dark);
+            border: 1px solid var(--primary-blue-light);
         }
 
         /* Main Viewer */
@@ -330,8 +364,9 @@
             grid-row: 2;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            max-height: calc(100vh - 140px);
+            gap: 16px;
+            max-height: calc(100vh - 80px);
+            padding: 16px 16px 16px 0;
         }
 
         .viewer-container {
@@ -343,16 +378,24 @@
         }
 
         .viewer-header {
-            padding: 20px 24px;
-            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+            padding: 16px;
+            border-bottom: 1px solid var(--divider);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            background: var(--white);
         }
 
         .viewer-title {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 16px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .viewer-title .material-icons {
+            color: var(--primary-blue);
         }
 
         .viewer-controls {
@@ -363,8 +406,7 @@
         .viewer-canvas {
             flex: 1;
             position: relative;
-            background: #f8f9fa;
-            border-radius: 0 0 16px 16px;
+            background: #FAFAFA;
             overflow: hidden;
         }
 
@@ -382,12 +424,12 @@
             color: var(--text-secondary);
         }
 
-        /* Loading Animation */
+        /* Material Loading Animation */
         .spinner {
             width: 48px;
             height: 48px;
-            border: 4px solid rgba(102, 126, 234, 0.1);
-            border-top-color: var(--primary);
+            border: 4px solid var(--divider);
+            border-top-color: var(--primary-blue);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 16px;
@@ -397,21 +439,21 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Progress Bar */
+        /* Material Progress Bar */
         .progress-container {
             margin-top: 16px;
         }
 
         .progress-bar {
-            height: 8px;
-            background: rgba(102, 126, 234, 0.1);
-            border-radius: 4px;
+            height: 4px;
+            background: var(--divider);
+            border-radius: 2px;
             overflow: hidden;
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            background: var(--success-green);
             transition: width 0.3s ease;
         }
 
@@ -422,75 +464,51 @@
             text-align: center;
         }
 
-        /* Toolbar */
-        .toolbar {
-            padding: 16px 24px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px) saturate(180%);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .toolbar-group {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .toolbar-separator {
-            width: 1px;
-            height: 24px;
-            background: rgba(102, 126, 234, 0.2);
-            margin: 0 8px;
-        }
-
-        /* Stats Panel */
+        /* Material Stats Panel */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+            gap: 8px;
         }
 
         .stat-card {
-            padding: 16px;
-            background: rgba(102, 126, 234, 0.04);
-            border-radius: 10px;
-            border: 1px solid rgba(102, 126, 234, 0.1);
+            padding: 12px;
+            background: var(--white);
+            border-radius: 4px;
+            border: 1px solid var(--divider);
         }
 
         .stat-label {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
             margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .stat-value {
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--primary);
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--primary-blue);
         }
 
-        /* Scrollbar Styling */
+        /* Material Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
         }
 
         ::-webkit-scrollbar-track {
-            background: rgba(102, 126, 234, 0.05);
-            border-radius: 4px;
+            background: var(--background);
         }
 
         ::-webkit-scrollbar-thumb {
-            background: rgba(102, 126, 234, 0.3);
+            background: #BDBDBD;
             border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(102, 126, 234, 0.5);
+            background: #9E9E9E;
         }
 
         /* Responsive */
@@ -507,6 +525,7 @@
 
             .main-content {
                 grid-row: 3;
+                padding: 16px;
             }
         }
 
@@ -521,6 +540,7 @@
             font-size: 64px;
             opacity: 0.3;
             margin-bottom: 16px;
+            color: var(--text-secondary);
         }
 
         .empty-text {
@@ -530,8 +550,8 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Header -->
-        <header class="header glass">
+        <!-- Material App Bar -->
+        <header class="header">
             <div class="logo">
                 <div class="logo-icon">APC</div>
                 <div class="logo-text">
@@ -540,25 +560,35 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button class="btn btn-secondary btn-icon" title="Settings">⚙️</button>
-                <button class="btn btn-secondary btn-icon" title="Help">❓</button>
+                <button class="btn btn-secondary btn-icon" title="Settings">
+                    <span class="material-icons">settings</span>
+                </button>
+                <button class="btn btn-secondary btn-icon" title="Help">
+                    <span class="material-icons">help_outline</span>
+                </button>
             </div>
         </header>
 
         <!-- Sidebar -->
         <aside class="sidebar">
             <!-- Upload Panel -->
-            <div class="panel glass">
+            <div class="panel card">
                 <div class="panel-header">
-                    <h2 class="panel-title">📤 Upload</h2>
+                    <h2 class="panel-title">
+                        <span class="material-icons">cloud_upload</span>
+                        Upload
+                    </h2>
                 </div>
                 <div class="upload-zone" id="uploadZone">
-                    <div class="upload-icon">☁️</div>
+                    <div class="upload-icon">
+                        <span class="material-icons" style="font-size: 48px;">file_upload</span>
+                    </div>
                     <p class="upload-text"><strong>Drop files here</strong> or click to browse</p>
                     <p class="upload-formats">PCD, PLY, LAS, LAZ, XYZ, PTX, E57</p>
                     <input type="file" id="fileInput" accept=".pcd,.ply,.las,.laz,.xyz,.ptx,.e57" style="display: none;" multiple>
                 </div>
                 <button class="btn btn-primary" style="width: 100%; margin-top: 12px;" onclick="document.getElementById('fileInput').click()">
+                    <span class="material-icons" style="font-size: 18px;">add</span>
                     Choose Files
                 </button>
                 <div id="uploadStatus"></div>
@@ -572,23 +602,33 @@
             </div>
 
             <!-- Point Clouds List -->
-            <div class="panel glass">
+            <div class="panel card">
                 <div class="panel-header">
-                    <h2 class="panel-title">📊 Point Clouds</h2>
-                    <button class="btn btn-secondary btn-icon" onclick="loadPointClouds()">🔄</button>
+                    <h2 class="panel-title">
+                        <span class="material-icons">scatter_plot</span>
+                        Point Clouds
+                    </h2>
+                    <button class="btn btn-secondary btn-icon" onclick="loadPointClouds()">
+                        <span class="material-icons">refresh</span>
+                    </button>
                 </div>
                 <div class="cloud-list" id="cloudList">
                     <div class="empty-state">
-                        <div class="empty-icon">📦</div>
+                        <div class="empty-icon">
+                            <span class="material-icons" style="font-size: 64px;">inbox</span>
+                        </div>
                         <p class="empty-text">No point clouds uploaded yet</p>
                     </div>
                 </div>
             </div>
 
             <!-- Processing Panel -->
-            <div class="panel glass">
+            <div class="panel card">
                 <div class="panel-header">
-                    <h2 class="panel-title">⚡ Processing</h2>
+                    <h2 class="panel-title">
+                        <span class="material-icons">tune</span>
+                        Processing
+                    </h2>
                 </div>
                 <div id="selectedInfo" style="margin-bottom: 16px; font-size: 13px; color: var(--text-secondary);">
                     Select a point cloud to view processing options
@@ -611,15 +651,19 @@
                 </div>
 
                 <button class="btn btn-primary" style="width: 100%;" id="processBtn" onclick="processPointCloud()" disabled>
+                    <span class="material-icons" style="font-size: 18px;">play_arrow</span>
                     Apply Processing
                 </button>
                 <div id="processStatus"></div>
             </div>
 
             <!-- Stats Panel -->
-            <div class="panel glass">
+            <div class="panel card">
                 <div class="panel-header">
-                    <h2 class="panel-title">📈 Statistics</h2>
+                    <h2 class="panel-title">
+                        <span class="material-icons">analytics</span>
+                        Statistics
+                    </h2>
                 </div>
                 <div class="stats-grid" id="statsGrid">
                     <div class="stat-card">
@@ -645,13 +689,22 @@
         <!-- Main Content -->
         <main class="main-content">
             <!-- Viewer -->
-            <div class="viewer-container glass">
+            <div class="viewer-container card card-elevated">
                 <div class="viewer-header">
-                    <h2 class="viewer-title">🎨 3D Viewer</h2>
+                    <h2 class="viewer-title">
+                        <span class="material-icons">3d_rotation</span>
+                        3D Viewer
+                    </h2>
                     <div class="viewer-controls">
-                        <button class="btn btn-secondary btn-icon" title="Fit View" onclick="fitView()">🎯</button>
-                        <button class="btn btn-secondary btn-icon" title="Screenshot" onclick="takeScreenshot()">📸</button>
-                        <button class="btn btn-secondary btn-icon" title="Toggle Grid" onclick="toggleGrid()">⊞</button>
+                        <button class="btn btn-secondary btn-icon" title="Fit View" onclick="fitView()">
+                            <span class="material-icons">center_focus_strong</span>
+                        </button>
+                        <button class="btn btn-secondary btn-icon" title="Screenshot" onclick="takeScreenshot()">
+                            <span class="material-icons">photo_camera</span>
+                        </button>
+                        <button class="btn btn-secondary btn-icon" title="Toggle Grid" onclick="toggleGrid()">
+                            <span class="material-icons">grid_on</span>
+                        </button>
                     </div>
                 </div>
                 <div class="viewer-canvas">
