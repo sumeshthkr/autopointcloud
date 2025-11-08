@@ -1,390 +1,275 @@
 # Deployment Guide for AutoPointCloud
 
-This guide covers various deployment options for AutoPointCloud, a Rust-based point cloud processing application.
+This guide covers deploying AutoPointCloud to Vercel and Netlify.
 
-## Table of Contents
-- [Quick Start (Local Development)](#quick-start-local-development)
-- [Production Deployment Options](#production-deployment-options)
-  - [Option 1: Fly.io (Recommended)](#option-1-flyio-recommended)
-  - [Option 2: Railway](#option-2-railway)
-  - [Option 3: Render](#option-3-render)
-  - [Option 4: Docker](#option-4-docker)
-  - [Option 5: Traditional VPS](#option-5-traditional-vps)
-- [CI/CD Setup](#cicd-setup)
-- [Environment Variables](#environment-variables)
+## Prerequisites
 
-## Quick Start (Local Development)
+- Node.js 20+ installed
+- npm or yarn package manager
+- Git repository connected to GitHub
 
+## Quick Deploy
+
+### Deploy to Vercel (Recommended)
+
+Vercel provides the best experience for Next.js applications:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/sumeshthkr/autopointcloud)
+
+**Via Dashboard:**
+1. Visit [vercel.com](https://vercel.com)
+2. Sign in with GitHub
+3. Click "Add New Project"
+4. Import your repository
+5. Click "Deploy" (no configuration needed!)
+
+**Via CLI:**
 ```bash
-# Clone the repository
-git clone https://github.com/sumeshthkr/autopointcloud.git
+# Install Vercel CLI
+npm install -g vercel
+
+# Deploy
 cd autopointcloud
+vercel
 
-# Build and run
-cargo build --release
-./target/release/autopointcloud
-
-# Access the application
-open http://127.0.0.1:8080
+# Follow the prompts
+# Production URL will be provided
 ```
 
-## Production Deployment Options
+### Deploy to Netlify
 
-### Option 1: Fly.io (Recommended)
+Netlify also works great with Next.js:
 
-Fly.io is excellent for Rust applications and provides global deployment.
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/sumeshthkr/autopointcloud)
 
-#### Prerequisites
-- Install Fly.io CLI: `curl -L https://fly.io/install.sh | sh`
-- Create a Fly.io account: https://fly.io/app/sign-up
+**Via Dashboard:**
+1. Visit [netlify.com](https://netlify.com)
+2. Sign in with GitHub
+3. Click "Add new site" → "Import an existing project"
+4. Select your repository
+5. Build settings:
+   - Build command: `npm run build`
+   - Publish directory: `.next`
+6. Click "Deploy site"
 
-#### Deployment Steps
-
+**Via CLI:**
 ```bash
-# Login to Fly.io
-flyctl auth login
+# Install Netlify CLI
+npm install -g netlify-cli
 
-# Launch the application (first time)
-flyctl launch
-# This will:
-# - Detect the Rust application
-# - Create a fly.toml configuration
-# - Set up the application
+# Login
+netlify login
 
-# Deploy the application
-flyctl deploy
-
-# Open the application
-flyctl open
-
-# View logs
-flyctl logs
-
-# Scale the application (optional)
-flyctl scale count 2
-flyctl scale vm shared-cpu-1x --memory 512
-```
-
-#### Custom Domain (Optional)
-
-```bash
-# Add custom domain
-flyctl certs create yourdomain.com
-
-# Add DNS records as instructed by Fly.io
-```
-
-### Option 2: Railway
-
-Railway provides automatic deployments from GitHub.
-
-#### Deployment Steps
-
-1. Visit https://railway.app
-2. Click "New Project"
-3. Select "Deploy from GitHub repo"
-4. Connect your repository
-5. Railway will automatically:
-   - Detect Rust
-   - Build the application
-   - Deploy it
-
-#### Configuration
-
-Create a `railway.toml`:
-
-```toml
-[build]
-builder = "nixpacks"
-
-[deploy]
-startCommand = "./target/release/autopointcloud"
-healthcheckPath = "/api/health"
-restartPolicyType = "on_failure"
-```
-
-### Option 3: Render
-
-Render provides simple Rust deployment with automatic HTTPS.
-
-#### Deployment Steps
-
-1. Visit https://render.com
-2. Click "New +" → "Web Service"
-3. Connect your GitHub repository
-4. Configure:
-   - **Environment**: Rust
-   - **Build Command**: `cargo build --release`
-   - **Start Command**: `./target/release/autopointcloud`
-   - **Port**: 8080
-5. Click "Create Web Service"
-
-### Option 4: Docker
-
-Deploy using Docker on any platform.
-
-#### Build and Run Locally
-
-```bash
-# Build the Docker image
-docker build -t autopointcloud:latest .
-
-# Run the container
-docker run -p 8080:8080 autopointcloud:latest
-
-# Access the application
-open http://localhost:8080
-```
-
-#### Deploy to Docker Hub
-
-```bash
-# Tag the image
-docker tag autopointcloud:latest yourusername/autopointcloud:latest
-
-# Push to Docker Hub
-docker push yourusername/autopointcloud:latest
-```
-
-#### Docker Compose (with persistence)
-
-Create `docker-compose.yml`:
-
-```yaml
-version: '3.8'
-
-services:
-  autopointcloud:
-    image: autopointcloud:latest
-    build: .
-    ports:
-      - "8080:8080"
-    environment:
-      - RUST_LOG=info
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-```
-
-Run with:
-```bash
-docker-compose up -d
-```
-
-### Option 5: Traditional VPS
-
-Deploy on a VPS (DigitalOcean, Linode, AWS EC2, etc.).
-
-#### Prerequisites
-- Ubuntu 20.04+ or Debian 11+
-- Rust 1.70+
-- Nginx (optional, for reverse proxy)
-
-#### Deployment Steps
-
-```bash
-# On your server:
-# 1. Install Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# 2. Clone and build
-git clone https://github.com/sumeshthkr/autopointcloud.git
+# Deploy
 cd autopointcloud
-cargo build --release
+netlify deploy --prod
 
-# 3. Create systemd service
-sudo tee /etc/systemd/system/autopointcloud.service > /dev/null <<EOF
-[Unit]
-Description=AutoPointCloud Service
-After=network.target
-
-[Service]
-Type=simple
-User=autopointcloud
-WorkingDirectory=/opt/autopointcloud
-ExecStart=/opt/autopointcloud/target/release/autopointcloud
-Restart=always
-RestartSec=5
-Environment=RUST_LOG=info
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# 4. Enable and start service
-sudo systemctl enable autopointcloud
-sudo systemctl start autopointcloud
-sudo systemctl status autopointcloud
+# Follow the prompts
 ```
 
-#### Nginx Reverse Proxy (Optional)
+## Configuration
 
-```nginx
-# /etc/nginx/sites-available/autopointcloud
-server {
-    listen 80;
-    server_name yourdomain.com;
+### Build Settings
 
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
+Both Vercel and Netlify auto-detect Next.js projects. However, if needed:
 
-Enable the site:
+**Build Command:** `npm run build`
+**Output Directory:** `.next`
+**Node Version:** 20.x
+
+### Environment Variables
+
+No environment variables are required! The application runs entirely client-side.
+
+### Custom Domain
+
+**Vercel:**
 ```bash
-sudo ln -s /etc/nginx/sites-available/autopointcloud /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
+vercel domains add yourdomain.com
 ```
+Then add DNS records as instructed.
 
-## CI/CD Setup
+**Netlify:**
+1. Go to Site settings → Domain management
+2. Click "Add custom domain"
+3. Follow DNS setup instructions
 
-### GitHub Actions
+## Performance Optimization
 
-The repository includes a CI/CD pipeline in `.github/workflows/ci-cd.yml` that:
-- Runs on every push and pull request
-- Lints code with `cargo fmt` and `cargo clippy`
-- Runs tests
-- Builds the project
-- Builds Docker image
-- Can deploy to Fly.io (when configured)
+### Already Optimized
 
-### Enable Fly.io Auto-Deployment
+The application includes:
+- ✅ Dynamic imports for Three.js components
+- ✅ Client-side rendering where appropriate
+- ✅ Optimized bundle splitting
+- ✅ Tailwind CSS tree-shaking
+- ✅ TypeScript for type safety
 
-1. Get your Fly.io API token:
-   ```bash
-   flyctl auth token
-   ```
+### Edge Functions (Optional)
 
-2. Add it to GitHub Secrets:
-   - Go to your repository → Settings → Secrets and variables → Actions
-   - Create new secret: `FLY_API_TOKEN`
-   - Paste your token
+For advanced use cases, you can add edge functions:
 
-3. Uncomment the deploy-fly job in `.github/workflows/ci-cd.yml`
+**Vercel Edge Functions:**
+Create `app/api/[route]/route.ts` files
 
-4. Push to main branch to trigger deployment
+**Netlify Edge Functions:**
+Create `netlify/edge-functions/[name].ts` files
 
-## Environment Variables
+## Monitoring
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `RUST_LOG` | Log level (error, warn, info, debug, trace) | `info` |
-| `PORT` | Port to bind to | `8080` |
-| `HOST` | Host to bind to | `127.0.0.1` |
+### Vercel Analytics
 
-## Monitoring and Maintenance
+Enable in Vercel dashboard:
+1. Go to your project
+2. Click "Analytics" tab
+3. Enable analytics
 
-### Health Check Endpoint
+### Netlify Analytics
 
-The application provides a health check endpoint:
-```
-GET /api/health
-```
-
-Response:
-```json
-{
-  "status": "healthy",
-  "service": "autopointcloud",
-  "version": "0.1.0"
-}
-```
-
-### Viewing Logs
-
-**Fly.io:**
-```bash
-flyctl logs
-```
-
-**Railway:**
-View logs in the Railway dashboard
-
-**Docker:**
-```bash
-docker logs -f container_name
-```
-
-**Systemd:**
-```bash
-sudo journalctl -u autopointcloud -f
-```
-
-## Security Considerations
-
-1. **HTTPS**: Always use HTTPS in production (Fly.io, Railway, and Render provide this automatically)
-2. **Environment Variables**: Never commit secrets to the repository
-3. **CORS**: Configure CORS appropriately for your domain
-4. **Rate Limiting**: Consider adding rate limiting for API endpoints
-5. **File Upload Limits**: Configure appropriate limits for point cloud uploads
-
-## Scaling
-
-### Horizontal Scaling (Fly.io)
-
-```bash
-# Scale to multiple instances
-flyctl scale count 3
-
-# Scale across multiple regions
-flyctl regions add ams  # Amsterdam
-flyctl regions add lax  # Los Angeles
-```
-
-### Vertical Scaling
-
-```bash
-# Fly.io
-flyctl scale vm shared-cpu-2x --memory 1024
-
-# Railway/Render
-Adjust in the dashboard
-```
+Enable in Netlify dashboard:
+1. Go to Site settings
+2. Click "Analytics"
+3. Enable analytics
 
 ## Troubleshooting
 
 ### Build Fails
 
+**Issue:** Build fails with "Cannot find module"
+**Solution:** Clear cache and rebuild
 ```bash
-# Clear cargo cache and rebuild
-cargo clean
-cargo build --release
+rm -rf .next node_modules package-lock.json
+npm install
+npm run build
 ```
 
-### Application Won't Start
+**Issue:** "WebGL not supported"
+**Solution:** This is a client-side issue. Ensure users have modern browsers with WebGL support.
 
-1. Check logs for errors
-2. Verify port 8080 is not in use
-3. Ensure all dependencies are installed
-4. Check file permissions
+### Deploy Fails
 
-### Slow Performance
+**Issue:** "Node version mismatch"
+**Solution:** Add `NODE_VERSION=20` to environment variables
 
-1. Ensure running in release mode (`--release`)
-2. Increase memory allocation
-3. Check for memory leaks
-4. Consider horizontal scaling
+**Issue:** "Build timeout"
+**Solution:** Increase build timeout in dashboard settings (usually not needed)
+
+### Runtime Issues
+
+**Issue:** "Three.js not loading"
+**Solution:** Check that dynamic import is working. Clear browser cache.
+
+**Issue:** "File upload not working"
+**Solution:** This is client-side. Check browser console for errors.
+
+## Rollback
+
+### Vercel
+
+Vercel keeps all deployments. To rollback:
+1. Go to Deployments tab
+2. Find previous deployment
+3. Click "..." → "Promote to Production"
+
+### Netlify
+
+Netlify also keeps deployment history:
+1. Go to Deploys tab
+2. Find previous deploy
+3. Click "Publish deploy"
+
+## CI/CD (Optional)
+
+### GitHub Actions
+
+The repository includes a CI/CD workflow at `.github/workflows/ci-cd.yml` that:
+- Runs on every push
+- Lints code
+- Builds the project
+- Can auto-deploy to Vercel/Netlify
+
+To enable auto-deploy:
+
+**For Vercel:**
+1. Get Vercel token: `vercel login && vercel token`
+2. Add to GitHub Secrets: `VERCEL_TOKEN`
+3. Uncomment deploy step in workflow
+
+**For Netlify:**
+1. Get Netlify token from dashboard
+2. Add to GitHub Secrets: `NETLIFY_AUTH_TOKEN`
+3. Add site ID: `NETLIFY_SITE_ID`
+4. Uncomment deploy step in workflow
+
+## Cost Estimates
+
+### Vercel
+
+- **Hobby (Free):**
+  - 100GB bandwidth/month
+  - Unlimited deployments
+  - Perfect for personal projects
+
+- **Pro ($20/month):**
+  - 1TB bandwidth
+  - Team collaboration
+  - Better for production
+
+### Netlify
+
+- **Starter (Free):**
+  - 100GB bandwidth/month
+  - 300 build minutes
+  - Great for personal use
+
+- **Pro ($19/month):**
+  - 1TB bandwidth
+  - 1000 build minutes
+  - Better for production
+
+## Best Practices
+
+1. **Use Git Tags:** Tag production releases
+   ```bash
+   git tag -a v2.0.0 -m "Production release"
+   git push origin v2.0.0
+   ```
+
+2. **Preview Deployments:** Both platforms create preview deployments for PRs
+
+3. **Monitor Performance:** Check analytics regularly
+
+4. **Update Dependencies:** Keep Next.js and Three.js updated
+   ```bash
+   npm outdated
+   npm update
+   ```
+
+5. **Test Locally First:**
+   ```bash
+   npm run build
+   npm start
+   ```
 
 ## Support
 
-For issues and questions:
+For deployment issues:
+- **Vercel:** https://vercel.com/support
+- **Netlify:** https://www.netlify.com/support/
+
+For application issues:
 - GitHub Issues: https://github.com/sumeshthkr/autopointcloud/issues
-- Email: your.email@example.com
 
-## License
+## Migration from Old Version
 
-MIT License - see LICENSE file for details
+If migrating from the Rust version:
+
+1. The old Docker/Fly.io deployments should be retired
+2. All functionality is now client-side
+3. No database or server needed
+4. Deploy the new Next.js version to Vercel/Netlify
+5. Update DNS to point to new deployment
+
+---
+
+**Ready to deploy? Run `vercel` or `netlify deploy --prod` now!**
