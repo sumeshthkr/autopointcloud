@@ -8,7 +8,7 @@ import { PointCloud, ProcessingOptions } from '@/lib/types'
 import { PointCloudParser } from '@/lib/parser'
 import { PointCloudProcessor } from '@/lib/processing'
 import { formatBytes, formatNumber } from '@/lib/utils'
-import MenuBar from '@/components/MenuBar'
+import SimplifiedMenuBar from '@/components/SimplifiedMenuBar'
 
 const PointCloudViewer = dynamic(() => import('@/components/PointCloudViewer'), {
   ssr: false,
@@ -138,8 +138,8 @@ export default function Home() {
           </div>
         </div>
         
-        {/* Menu Bar */}
-        <MenuBar
+        {/* Simplified Menu Bar */}
+        <SimplifiedMenuBar
           onFileUpload={triggerFileUpload}
           onExport={handleExport}
           onProcess={handleProcess}
