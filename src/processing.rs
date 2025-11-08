@@ -393,10 +393,12 @@ mod tests {
     #[test]
     fn test_voxel_downsample() {
         let points = create_test_points();
-        let result = voxel_downsample_parallel(&points, 0.5);
+        // Use larger voxel size to group the clustered points
+        let result = voxel_downsample_parallel(&points, 2.0);
         assert!(result.is_ok());
         let downsampled = result.unwrap();
-        assert!(downsampled.len() < points.len());
+        // With voxel size 2.0, the 4 close points should be downsampled to 1
+        assert!(downsampled.len() <= 2); // Should have at most 2 voxels (cluster + outlier)
     }
 
     #[test]
