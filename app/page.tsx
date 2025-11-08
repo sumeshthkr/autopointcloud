@@ -70,7 +70,7 @@ export default function Home() {
     }
   }, [pointCloud, filterType, voxelSize, threshold])
   
-  const handleExport = useCallback((format: 'pcd' | 'ply' | 'xyz') => {
+  const handleExport = useCallback((format: 'pcd' | 'ply' | 'xyz' | 'obj' | 'stl') => {
     if (!pointCloud) return
     
     try {
@@ -99,9 +99,9 @@ export default function Home() {
       const dataTransfer = new DataTransfer()
       dataTransfer.items.add(file)
       input.files = dataTransfer.files
-      const changeEvent = new Event('change', { bubbles: true })
+      const changeEvent = new Event('change', { bubbles: true }) as unknown as React.ChangeEvent<HTMLInputElement>
       Object.defineProperty(changeEvent, 'target', { value: input, enumerable: true })
-      handleFileUpload(changeEvent as any)
+      handleFileUpload(changeEvent)
     }
   }, [handleFileUpload])
   
@@ -147,7 +147,7 @@ export default function Home() {
                   Upload Point Cloud
                 </CardTitle>
                 <CardDescription>
-                  Supports PCD, PLY, XYZ formats
+                  Supports PCD, PLY, XYZ, OBJ, STL formats
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -158,7 +158,7 @@ export default function Home() {
                 >
                   <input
                     type="file"
-                    accept=".pcd,.ply,.xyz,.txt"
+                    accept=".pcd,.ply,.xyz,.txt,.obj,.stl"
                     onChange={handleFileUpload}
                     className="hidden"
                     id="file-upload"
@@ -170,7 +170,7 @@ export default function Home() {
                       {isUploading ? 'Uploading...' : 'Drop file or click to upload'}
                     </p>
                     <p className="text-xs text-slate-500">
-                      PCD, PLY, XYZ (max 100MB)
+                      PCD, PLY, XYZ, OBJ, STL (max 100MB)
                     </p>
                   </label>
                 </div>
@@ -189,7 +189,7 @@ export default function Home() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Info className="w-5 h-5" />
-                    Point Cloud Info
+                    {pointCloud.isMesh ? '3D Mesh Info' : 'Point Cloud Info'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
@@ -198,9 +198,19 @@ export default function Home() {
                     <span className="font-medium">{pointCloud.name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Points:</span>
+                    <span className="text-slate-500">Type:</span>
+                    <span className="font-medium">{pointCloud.isMesh ? 'Mesh' : 'Point Cloud'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Vertices:</span>
                     <span className="font-mono font-medium">{formatNumber(pointCloud.numPoints)}</span>
                   </div>
+                  {pointCloud.isMesh && pointCloud.numFaces && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Faces:</span>
+                      <span className="font-mono font-medium">{formatNumber(pointCloud.numFaces)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-slate-500">Size:</span>
                     <span className="font-mono">{formatBytes(pointCloud.fileSize)}</span>
@@ -313,16 +323,32 @@ export default function Home() {
                     Export
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex gap-2">
-                  <Button variant="outline" onClick={() => handleExport('pcd')} className="flex-1">
-                    PCD
-                  </Button>
-                  <Button variant="outline" onClick={() => handleExport('ply')} className="flex-1">
-                    PLY
-                  </Button>
-                  <Button variant="outline" onClick={() => handleExport('xyz')} className="flex-1">
-                    XYZ
-                  </Button>
+                <CardContent className="space-y-2">
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => handleExport('ply')} className="flex-1">
+                      PLY
+                    </Button>
+                    {!pointCloud.isMesh && (
+                      <>
+                        <Button variant="outline" onClick={() => handleExport('pcd')} className="flex-1">
+                          PCD
+                        </Button>
+                        <Button variant="outline" onClick={() => handleExport('xyz')} className="flex-1">
+                          XYZ
+                        </Button>
+                      </>
+                    )}
+                    {pointCloud.isMesh && (
+                      <>
+                        <Button variant="outline" onClick={() => handleExport('obj')} className="flex-1">
+                          OBJ
+                        </Button>
+                        <Button variant="outline" onClick={() => handleExport('stl')} className="flex-1">
+                          STL
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -336,6 +362,8 @@ export default function Home() {
                   points={pointCloud?.points || []}
                   hasColor={pointCloud?.hasColor || false}
                   hasIntensity={pointCloud?.hasIntensity || false}
+                  faces={pointCloud?.faces}
+                  isMesh={pointCloud?.isMesh || false}
                 />
               </CardContent>
             </Card>

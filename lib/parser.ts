@@ -1,4 +1,4 @@
-import { Point3D, BoundingBox, PointCloud } from './types'
+import { Point3D, Face, BoundingBox, PointCloud } from './types'
 import { generateId } from './utils'
 
 export class PointCloudParser {
@@ -13,9 +13,13 @@ export class PointCloudParser {
       case 'xyz':
       case 'txt':
         return this.parseXYZ(file)
+      case 'obj':
+        return this.parseOBJ(file)
+      case 'stl':
+        return this.parseSTL(file)
       case 'las':
       case 'laz':
-        throw new Error('LAS/LAZ format support coming soon. Please use PCD, PLY, or XYZ format.')
+        throw new Error('LAS/LAZ format support coming soon. Please use PCD, PLY, XYZ, OBJ, or STL format.')
       default:
         throw new Error(`Unsupported file format: ${extension}`)
     }
@@ -26,7 +30,6 @@ export class PointCloudParser {
     const lines = text.split('\n')
     
     let dataStart = 0
-    let numPoints = 0
     let hasColor = false
     let hasIntensity = false
     let fields: string[] = []
@@ -40,8 +43,6 @@ export class PointCloudParser {
         fields = line.split(' ').slice(1)
         hasColor = fields.includes('rgb') || (fields.includes('r') && fields.includes('g') && fields.includes('b'))
         hasIntensity = fields.includes('intensity')
-      } else if (line.startsWith('POINTS')) {
-        numPoints = parseInt(line.split(' ')[1])
       } else if (line.startsWith('DATA')) {
         isBinary = line.split(' ')[1] === 'binary'
         dataStart = i + 1
@@ -105,7 +106,8 @@ export class PointCloudParser {
     const lines = text.split('\n')
     
     let dataStart = 0
-    let numPoints = 0
+    let numVertices = 0
+    let numFaces = 0
     let hasColor = false
     let hasIntensity = false
     let format = 'ascii'
@@ -118,7 +120,9 @@ export class PointCloudParser {
       if (line.startsWith('format')) {
         format = line.split(' ')[1]
       } else if (line.startsWith('element vertex')) {
-        numPoints = parseInt(line.split(' ')[2])
+        numVertices = parseInt(line.split(' ')[2])
+      } else if (line.startsWith('element face')) {
+        numFaces = parseInt(line.split(' ')[2])
       } else if (line.startsWith('property')) {
         const parts = line.split(' ')
         const propName = parts[parts.length - 1]
@@ -136,11 +140,15 @@ export class PointCloudParser {
       throw new Error('Binary PLY format is not yet supported. Please use ASCII PLY format.')
     }
     
-    // Parse points
+    // Parse vertices
     const points: Point3D[] = []
-    for (let i = dataStart; i < lines.length; i++) {
-      const line = lines[i].trim()
-      if (!line) continue
+    let currentLine = dataStart
+    for (let i = 0; i < numVertices && currentLine < lines.length; i++, currentLine++) {
+      const line = lines[currentLine].trim()
+      if (!line) {
+        i--
+        continue
+      }
       
       const values = line.split(/\s+/).map(parseFloat)
       if (values.length < 3) continue
@@ -171,7 +179,36 @@ export class PointCloudParser {
       points.push(point)
     }
     
-    return this.createPointCloud(file, points, 'PLY', hasColor, hasIntensity)
+    // Parse faces
+    const faces: Face[] = []
+    for (let i = 0; i < numFaces && currentLine < lines.length; i++, currentLine++) {
+      const line = lines[currentLine].trim()
+      if (!line) {
+        i--
+        continue
+      }
+      
+      const values = line.split(/\s+/).map(v => parseInt(v))
+      if (values.length < 4) continue
+      
+      const numVerticesInFace = values[0]
+      if (numVerticesInFace === 3) {
+        // Triangle face
+        faces.push({
+          vertices: [values[1], values[2], values[3]]
+        })
+      } else if (numVerticesInFace === 4) {
+        // Quad face - split into two triangles
+        faces.push({
+          vertices: [values[1], values[2], values[3]]
+        })
+        faces.push({
+          vertices: [values[1], values[3], values[4]]
+        })
+      }
+    }
+    
+    return this.createPointCloud(file, points, 'PLY', hasColor, hasIntensity, faces.length > 0 ? faces : undefined)
   }
 
   private static async parseXYZ(file: File): Promise<PointCloud> {
@@ -217,9 +254,10 @@ export class PointCloudParser {
   private static createPointCloud(
     file: File,
     points: Point3D[],
-    format: 'PCD' | 'PLY' | 'XYZ',
+    format: 'PCD' | 'PLY' | 'XYZ' | 'OBJ' | 'STL',
     hasColor: boolean,
-    hasIntensity: boolean
+    hasIntensity: boolean,
+    faces?: Face[]
   ): PointCloud {
     const boundingBox = this.calculateBoundingBox(points)
     
@@ -234,6 +272,9 @@ export class PointCloudParser {
       createdAt: new Date(),
       hasColor,
       hasIntensity,
+      faces,
+      numFaces: faces?.length,
+      isMesh: !!faces && faces.length > 0,
     }
   }
 
@@ -283,5 +324,133 @@ export class PointCloudParser {
     const g = (rgb >> 8) & 0xFF
     const b = rgb & 0xFF
     return [r, g, b]
+  }
+
+  private static async parseOBJ(file: File): Promise<PointCloud> {
+    const text = await file.text()
+    const lines = text.split('\n')
+    
+    const vertices: Point3D[] = []
+    const normals: [number, number, number][] = []
+    const faces: Face[] = []
+    
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) continue
+      
+      const parts = trimmed.split(/\s+/)
+      const type = parts[0]
+      
+      if (type === 'v') {
+        // Vertex position
+        if (parts.length >= 4) {
+          vertices.push({
+            x: parseFloat(parts[1]),
+            y: parseFloat(parts[2]),
+            z: parseFloat(parts[3]),
+          })
+        }
+      } else if (type === 'vn') {
+        // Vertex normal
+        if (parts.length >= 4) {
+          normals.push([
+            parseFloat(parts[1]),
+            parseFloat(parts[2]),
+            parseFloat(parts[3])
+          ])
+        }
+      } else if (type === 'f') {
+        // Face - can be f v1 v2 v3 or f v1/vt1/vn1 v2/vt2/vn2 v3/vt3/vn3
+        if (parts.length >= 4) {
+          const indices = parts.slice(1, 4).map(p => {
+            const idx = parseInt(p.split('/')[0])
+            // OBJ indices are 1-based, convert to 0-based
+            return idx > 0 ? idx - 1 : vertices.length + idx
+          })
+          
+          if (indices.length === 3) {
+            faces.push({
+              vertices: [indices[0], indices[1], indices[2]]
+            })
+          }
+        }
+      }
+    }
+    
+    // Assign normals to vertices if available
+    if (normals.length > 0) {
+      vertices.forEach((v, i) => {
+        if (i < normals.length) {
+          v.normal = normals[i]
+        }
+      })
+    }
+    
+    return this.createPointCloud(file, vertices, 'OBJ', false, false, faces)
+  }
+
+  private static async parseSTL(file: File): Promise<PointCloud> {
+    const text = await file.text()
+    const lines = text.split('\n')
+    
+    const vertices: Point3D[] = []
+    const faces: Face[] = []
+    const vertexMap = new Map<string, number>()
+    
+    let currentNormal: [number, number, number] | null = null
+    const tempVertices: Point3D[] = []
+    
+    for (const line of lines) {
+      const trimmed = line.trim()
+      
+      if (trimmed.startsWith('facet normal')) {
+        const parts = trimmed.split(/\s+/)
+        if (parts.length >= 4) {
+          currentNormal = [
+            parseFloat(parts[2]),
+            parseFloat(parts[3]),
+            parseFloat(parts[4])
+          ]
+        }
+        tempVertices.length = 0
+      } else if (trimmed.startsWith('vertex')) {
+        const parts = trimmed.split(/\s+/)
+        if (parts.length >= 4) {
+          const vertex: Point3D = {
+            x: parseFloat(parts[1]),
+            y: parseFloat(parts[2]),
+            z: parseFloat(parts[3]),
+            normal: currentNormal || undefined
+          }
+          tempVertices.push(vertex)
+        }
+      } else if (trimmed === 'endfacet') {
+        // Add vertices and create face
+        if (tempVertices.length === 3) {
+          const indices: [number, number, number] = [0, 0, 0]
+          
+          for (let i = 0; i < 3; i++) {
+            const v = tempVertices[i]
+            const key = `${v.x.toFixed(6)},${v.y.toFixed(6)},${v.z.toFixed(6)}`
+            
+            let idx = vertexMap.get(key)
+            if (idx === undefined) {
+              idx = vertices.length
+              vertices.push(v)
+              vertexMap.set(key, idx)
+            }
+            indices[i] = idx
+          }
+          
+          faces.push({
+            vertices: indices,
+            normal: currentNormal || undefined
+          })
+        }
+        currentNormal = null
+      }
+    }
+    
+    return this.createPointCloud(file, vertices, 'STL', false, false, faces)
   }
 }

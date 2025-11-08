@@ -1,7 +1,7 @@
 {
   "name": "autopointcloud",
   "version": "2.0.0",
-  "description": "Professional point cloud processing web application built with Next.js and Three.js",
+  "description": "Professional point cloud and 3D mesh processing web application built with Next.js and Three.js",
   "author": "sumeshthkr",
   "license": "MIT",
   "repository": {
@@ -11,6 +11,7 @@
   "keywords": [
     "point-cloud",
     "3d",
+    "mesh",
     "visualization",
     "processing",
     "nextjs",
@@ -18,7 +19,9 @@
     "webgl",
     "pcd",
     "ply",
-    "xyz"
+    "xyz",
+    "obj",
+    "stl"
   ],
   "scripts": {
     "dev": "next dev",

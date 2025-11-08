@@ -1,21 +1,24 @@
 'use client'
 
-import { useEffect, useRef, useMemo, useState } from 'react'
+import { useRef, useMemo, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
-import { Point3D } from '@/lib/types'
+import { Point3D, Face } from '@/lib/types'
 
 interface PointCloudViewerProps {
   points: Point3D[]
   hasColor: boolean
   hasIntensity: boolean
+  faces?: Face[]
+  isMesh?: boolean
 }
 
-function PointCloud({ points, hasColor, hasIntensity }: PointCloudViewerProps) {
+function PointCloud({ points, hasColor, hasIntensity, faces, isMesh }: PointCloudViewerProps) {
+  const meshRef = useRef<THREE.Mesh>(null)
   const pointsRef = useRef<THREE.Points>(null)
   
-  const { positions, colors } = useMemo(() => {
+  const { positions, colors, indices, normals } = useMemo(() => {
     const positions = new Float32Array(points.length * 3)
     const colors = new Float32Array(points.length * 3)
     
@@ -56,15 +59,81 @@ function PointCloud({ points, hasColor, hasIntensity }: PointCloudViewerProps) {
       }
     }
     
-    return { positions, colors }
-  }, [points, hasColor, hasIntensity])
+    // Build indices for mesh faces
+    let indices: number[] | undefined
+    let normals: Float32Array | undefined
+    
+    if (isMesh && faces && faces.length > 0) {
+      indices = []
+      for (const face of faces) {
+        indices.push(face.vertices[0], face.vertices[1], face.vertices[2])
+      }
+      
+      // Compute normals if not provided
+      normals = new Float32Array(points.length * 3)
+      const tempNormals = new Array(points.length).fill(null).map(() => new THREE.Vector3())
+      
+      for (const face of faces) {
+        const v0 = new THREE.Vector3(
+          points[face.vertices[0]].x,
+          points[face.vertices[0]].y,
+          points[face.vertices[0]].z
+        )
+        const v1 = new THREE.Vector3(
+          points[face.vertices[1]].x,
+          points[face.vertices[1]].y,
+          points[face.vertices[1]].z
+        )
+        const v2 = new THREE.Vector3(
+          points[face.vertices[2]].x,
+          points[face.vertices[2]].y,
+          points[face.vertices[2]].z
+        )
+        
+        const edge1 = v1.clone().sub(v0)
+        const edge2 = v2.clone().sub(v0)
+        const normal = edge1.cross(edge2).normalize()
+        
+        tempNormals[face.vertices[0]].add(normal)
+        tempNormals[face.vertices[1]].add(normal)
+        tempNormals[face.vertices[2]].add(normal)
+      }
+      
+      for (let i = 0; i < points.length; i++) {
+        const n = tempNormals[i].normalize()
+        normals[i * 3] = n.x
+        normals[i * 3 + 1] = n.y
+        normals[i * 3 + 2] = n.z
+      }
+    }
+    
+    return { positions, colors, indices, normals }
+  }, [points, hasColor, hasIntensity, faces, isMesh])
   
   const geometry = useMemo(() => {
     const geom = new THREE.BufferGeometry()
     geom.setAttribute('position', new THREE.BufferAttribute(positions, 3))
     geom.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+    
+    if (isMesh && indices && normals) {
+      geom.setIndex(indices)
+      geom.setAttribute('normal', new THREE.BufferAttribute(normals, 3))
+    }
+    
     return geom
-  }, [positions, colors])
+  }, [positions, colors, indices, normals, isMesh])
+  
+  if (isMesh && indices) {
+    return (
+      <mesh ref={meshRef} geometry={geometry}>
+        <meshStandardMaterial
+          vertexColors
+          side={THREE.DoubleSide}
+          flatShading={false}
+        />
+      </mesh>
+    )
+  }
   
   return (
     <points ref={pointsRef} geometry={geometry}>
@@ -88,7 +157,7 @@ function Grid() {
   )
 }
 
-export default function PointCloudViewer({ points, hasColor, hasIntensity }: PointCloudViewerProps) {
+export default function PointCloudViewer({ points, hasColor, hasIntensity, faces, isMesh }: PointCloudViewerProps) {
   const [fps, setFps] = useState(60)
   
   // Calculate camera position based on bounding box
@@ -172,7 +241,7 @@ export default function PointCloudViewer({ points, hasColor, hasIntensity }: Poi
           <ambientLight intensity={0.5} />
           <directionalLight position={[10, 10, 5]} intensity={1} />
           <directionalLight position={[-10, -10, -5]} intensity={0.3} />
-          <PointCloud points={points} hasColor={hasColor} hasIntensity={hasIntensity} />
+          <PointCloud points={points} hasColor={hasColor} hasIntensity={hasIntensity} faces={faces} isMesh={isMesh} />
           <Grid />
           <FPSCounter setFps={setFps} />
         </Canvas>
@@ -183,11 +252,16 @@ export default function PointCloudViewer({ points, hasColor, hasIntensity }: Poi
 
 function FPSCounter({ setFps }: { setFps: (fps: number) => void }) {
   const frameCount = useRef(0)
-  const lastTime = useRef(Date.now())
+  const lastTime = useRef(0)
   
   useFrame(() => {
     frameCount.current++
-    const now = Date.now()
+    const now = performance.now()
+    
+    if (lastTime.current === 0) {
+      lastTime.current = now
+    }
+    
     const delta = now - lastTime.current
     
     if (delta >= 1000) {
