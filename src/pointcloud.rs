@@ -296,28 +296,48 @@ pub fn generate_sample_pointcloud(num_points: usize) -> Vec<Point3D> {
 
 /// Detects point cloud format from content and filename
 pub fn detect_format(content: &str, filename: &str) -> String {
-    if filename.ends_with(".pcd") {
+    let lower_name = filename.to_lowercase();
+    
+    if lower_name.ends_with(".pcd") {
         "PCD".to_string()
-    } else if filename.ends_with(".ply") {
+    } else if lower_name.ends_with(".ply") {
         "PLY".to_string()
-    } else if filename.ends_with(".las") {
+    } else if lower_name.ends_with(".las") {
         "LAS".to_string()
+    } else if lower_name.ends_with(".laz") {
+        "LAZ".to_string()
+    } else if lower_name.ends_with(".xyz") || lower_name.ends_with(".txt") {
+        "XYZ".to_string()
+    } else if lower_name.ends_with(".pts") || lower_name.ends_with(".ptx") {
+        "PTX".to_string()
+    } else if lower_name.ends_with(".e57") {
+        "E57".to_string()
     } else if content.contains("ply") {
         "PLY".to_string()
     } else if content.contains("PCD") || content.contains("VERSION") {
         "PCD".to_string()
     } else {
-        "Unknown".to_string()
+        // Try to detect XYZ format (plain text with numbers)
+        let lines: Vec<&str> = content.lines().take(10).collect();
+        if lines.iter().any(|line| {
+            let parts: Vec<&str> = line.trim().split_whitespace().collect();
+            parts.len() >= 3 && parts.iter().all(|p| p.parse::<f64>().is_ok())
+        }) {
+            "XYZ".to_string()
+        } else {
+            "Unknown".to_string()
+        }
     }
 }
 
-/// Universal point cloud parser - handles ASCII and binary PCD, and more
+/// Universal point cloud parser - handles multiple formats
 pub fn parse_pointcloud(content: &str, filename: &str) -> Result<Vec<Point3D>, ProcessingError> {
     let format = detect_format(content, filename);
     
     match format.as_str() {
         "PCD" => parse_pcd_universal(content),
         "PLY" => parse_ply_string(content),
+        "XYZ" | "PTX" => parse_xyz_string(content),
         _ => Err(ProcessingError::InvalidFormat),
     }
 }
@@ -545,5 +565,81 @@ fn parse_ply_string(content: &str) -> Result<Vec<Point3D>, ProcessingError> {
         return Err(ProcessingError::EmptyPointCloud);
     }
 
+    Ok(points)
+}
+
+/// Parse XYZ/PTX format (plain text point cloud)
+/// Supports:
+/// - XYZ: x y z [intensity] [r g b]
+/// - PTX: Similar to XYZ with optional extra columns
+fn parse_xyz_string(content: &str) -> Result<Vec<Point3D>, ProcessingError> {
+    let mut points = Vec::new();
+    
+    for line in content.lines() {
+        let trimmed = line.trim();
+        
+        // Skip empty lines and comments
+        if trimmed.is_empty() || trimmed.starts_with('#') || trimmed.starts_with("//") {
+            continue;
+        }
+        
+        let parts: Vec<&str> = trimmed.split_whitespace().collect();
+        
+        // Need at least X, Y, Z
+        if parts.len() < 3 {
+            continue;
+        }
+        
+        // Parse coordinates
+        let x = parts[0].parse::<f64>().map_err(|_| {
+            ProcessingError::ParseError("Invalid X coordinate".to_string())
+        })?;
+        let y = parts[1].parse::<f64>().map_err(|_| {
+            ProcessingError::ParseError("Invalid Y coordinate".to_string())
+        })?;
+        let z = parts[2].parse::<f64>().map_err(|_| {
+            ProcessingError::ParseError("Invalid Z coordinate".to_string())
+        })?;
+        
+        // Try to parse optional intensity (4th column)
+        let intensity = if parts.len() > 3 {
+            parts[3].parse::<f64>().ok()
+        } else {
+            None
+        };
+        
+        // Try to parse optional RGB (columns 4-6 or 5-7)
+        let color = if parts.len() >= 6 {
+            let start_idx = if intensity.is_some() { 4 } else { 3 };
+            if parts.len() > start_idx + 2 {
+                if let (Ok(r), Ok(g), Ok(b)) = (
+                    parts[start_idx].parse::<u8>(),
+                    parts[start_idx + 1].parse::<u8>(),
+                    parts[start_idx + 2].parse::<u8>(),
+                ) {
+                    Some([r, g, b])
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        
+        points.push(Point3D {
+            x,
+            y,
+            z,
+            intensity,
+            color,
+        });
+    }
+    
+    if points.is_empty() {
+        return Err(ProcessingError::EmptyPointCloud);
+    }
+    
     Ok(points)
 }

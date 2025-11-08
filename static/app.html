@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoPointCloud - Professional Point Cloud Processing</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.18);
+            --shadow: rgba(0, 0, 0, 0.1);
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--background);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        /* Glass Morphism Card */
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 var(--shadow);
+        }
+
+        /* Layout */
+        .app-container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 30px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 24px;
+        }
+
+        .logo-text h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 2px;
+        }
+
+        .logo-text p {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 400;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            grid-row: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+
+        .panel {
+            padding: 24px;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Upload Section */
+        .upload-zone {
+            border: 2px dashed rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(102, 126, 234, 0.02);
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(102, 126, 234, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.6;
+        }
+
+        .upload-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .upload-formats {
+            font-size: 12px;
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(102, 126, 234, 0.1);
+            color: var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(102, 126, 234, 0.15);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Point Cloud List */
+        .cloud-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .cloud-item {
+            padding: 16px;
+            border-radius: 10px;
+            background: rgba(102, 126, 234, 0.04);
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .cloud-item:hover {
+            background: rgba(102, 126, 234, 0.08);
+            transform: translateX(4px);
+        }
+
+        .cloud-item.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        .cloud-name {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .cloud-meta {
+            font-size: 12px;
+            opacity: 0.8;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .cloud-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Status Messages */
+        .status {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .status-info {
+            background: rgba(102, 126, 234, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        /* Main Viewer */
+        .main-content {
+            grid-row: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-height: calc(100vh - 140px);
+        }
+
+        .viewer-container {
+            flex: 1;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .viewer-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .viewer-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .viewer-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .viewer-canvas {
+            flex: 1;
+            position: relative;
+            background: #f8f9fa;
+            border-radius: 0 0 16px 16px;
+            overflow: hidden;
+        }
+
+        #viewer {
+            width: 100%;
+            height: 100%;
+        }
+
+        .viewer-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        /* Loading Animation */
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(102, 126, 234, 0.1);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin-top: 16px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            padding: 16px 24px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 24px;
+            background: rgba(102, 126, 234, 0.2);
+            margin: 0 8px;
+        }
+
+        /* Stats Panel */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .stat-card {
+            padding: 16px;
+            background: rgba(102, 126, 234, 0.04);
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.5);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr;
+            }
+
+            .sidebar {
+                grid-row: 2;
+                max-height: none;
+            }
+
+            .main-content {
+                grid-row: 3;
+            }
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-secondary);
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            opacity: 0.3;
+            margin-bottom: 16px;
+        }
+
+        .empty-text {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header glass">
+            <div class="logo">
+                <div class="logo-icon">APC</div>
+                <div class="logo-text">
+                    <h1>AutoPointCloud</h1>
+                    <p>Professional Point Cloud Processing</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary btn-icon" title="Settings">⚙️</button>
+                <button class="btn btn-secondary btn-icon" title="Help">❓</button>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <!-- Upload Panel -->
+            <div class="panel glass">
+                <div class="panel-header">
+                    <h2 class="panel-title">📤 Upload</h2>
+                </div>
+                <div class="upload-zone" id="uploadZone">
+                    <div class="upload-icon">☁️</div>
+                    <p class="upload-text"><strong>Drop files here</strong> or click to browse</p>
+                    <p class="upload-formats">PCD, PLY, LAS, LAZ, XYZ, PTX, E57</p>
+                    <input type="file" id="fileInput" accept=".pcd,.ply,.las,.laz,.xyz,.ptx,.e57" style="display: none;" multiple>
+                </div>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 12px;" onclick="document.getElementById('fileInput').click()">
+                    Choose Files
+                </button>
+                <div id="uploadStatus"></div>
+                
+                <div class="progress-container" id="progressContainer" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p class="progress-text" id="progressText">Loading...</p>
+                </div>
+            </div>
+
+            <!-- Point Clouds List -->
+            <div class="panel glass">
+                <div class="panel-header">
+                    <h2 class="panel-title">📊 Point Clouds</h2>
+                    <button class="btn btn-secondary btn-icon" onclick="loadPointClouds()">🔄</button>
+                </div>
+                <div class="cloud-list" id="cloudList">
+                    <div class="empty-state">
+                        <div class="empty-icon">📦</div>
+                        <p class="empty-text">No point clouds uploaded yet</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processing Panel -->
+            <div class="panel glass">
+                <div class="panel-header">
+                    <h2 class="panel-title">⚡ Processing</h2>
+                </div>
+                <div id="selectedInfo" style="margin-bottom: 16px; font-size: 13px; color: var(--text-secondary);">
+                    Select a point cloud to view processing options
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Operation</label>
+                    <select class="form-control" id="operationType">
+                        <option value="">Choose operation...</option>
+                        <option value="downsample">Voxel Downsample</option>
+                        <option value="intensity">Intensity Filter</option>
+                        <option value="distance">Distance Filter</option>
+                        <option value="statistical_outlier">Statistical Outlier Removal</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="paramGroup" style="display: none;">
+                    <label class="form-label" id="paramLabel">Parameter</label>
+                    <input type="number" class="form-control" id="paramValue" step="0.01" value="0.1">
+                </div>
+
+                <button class="btn btn-primary" style="width: 100%;" id="processBtn" onclick="processPointCloud()" disabled>
+                    Apply Processing
+                </button>
+                <div id="processStatus"></div>
+            </div>
+
+            <!-- Stats Panel -->
+            <div class="panel glass">
+                <div class="panel-header">
+                    <h2 class="panel-title">📈 Statistics</h2>
+                </div>
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Points</div>
+                        <div class="stat-value" id="statTotalPoints">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">File Size</div>
+                        <div class="stat-value" id="statFileSize">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Loaded Clouds</div>
+                        <div class="stat-value" id="statCloudCount">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Render FPS</div>
+                        <div class="stat-value" id="statFPS">60</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Viewer -->
+            <div class="viewer-container glass">
+                <div class="viewer-header">
+                    <h2 class="viewer-title">🎨 3D Viewer</h2>
+                    <div class="viewer-controls">
+                        <button class="btn btn-secondary btn-icon" title="Fit View" onclick="fitView()">🎯</button>
+                        <button class="btn btn-secondary btn-icon" title="Screenshot" onclick="takeScreenshot()">📸</button>
+                        <button class="btn btn-secondary btn-icon" title="Toggle Grid" onclick="toggleGrid()">⊞</button>
+                    </div>
+                </div>
+                <div class="viewer-canvas">
+                    <div id="viewer"></div>
+                    <div class="viewer-overlay" id="viewerOverlay">
+                        <div class="spinner"></div>
+                        <p>Initializing 3D Viewer...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

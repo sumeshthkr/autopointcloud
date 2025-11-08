@@ -20,6 +20,7 @@ serde_json = "1.0"
 
 # Point cloud processing
 nalgebra = "0.32"
+rayon = "1.10"  # Parallel processing
 
 # File handling
 tokio = { version = "1.0", features = ["full"] }
@@ -27,6 +28,7 @@ bytes = "1.0"
 futures = "0.3"
 byteorder = "1.5"
 bincode = "1.3"
+flate2 = "1.0"  # Compression
 
 # Error handling
 anyhow = "1.0"
