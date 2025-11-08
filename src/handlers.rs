@@ -6,6 +6,13 @@ use actix_multipart::Multipart;
 use futures::StreamExt;
 
 use crate::pointcloud::{PointCloud, ProcessingError, generate_sample_pointcloud, parse_pointcloud, detect_format};
+use crate::processing::{
+    statistical_outlier_removal, 
+    radius_outlier_removal, 
+    passthrough_filter,
+    transform_pointcloud,
+    voxel_downsample_parallel
+};
 use crate::AppState;
 
 #[derive(Deserialize)]
@@ -200,10 +207,36 @@ pub async fn process_pointcloud(
                     }
                     "downsample" => {
                         if let Some(voxel_size) = request.voxel_size {
-                            pointcloud.downsample(voxel_size)
+                            // Use optimized parallel downsampling
+                            voxel_downsample_parallel(&pointcloud.points, voxel_size)
                         } else {
                             Err(ProcessingError::Processing("Voxel size required for downsampling".to_string()))
                         }
+                    }
+                    "statistical_outlier" => {
+                        let k_neighbors = 20; // Default
+                        let std_dev_mul = request.threshold.unwrap_or(2.0);
+                        statistical_outlier_removal(&pointcloud.points, k_neighbors, std_dev_mul)
+                    }
+                    "radius_outlier" => {
+                        let radius = request.voxel_size.unwrap_or(1.0);
+                        let min_neighbors = 5; // Default
+                        radius_outlier_removal(&pointcloud.points, radius, min_neighbors)
+                    }
+                    "passthrough_x" => {
+                        let min_val = request.threshold.unwrap_or(0.0);
+                        let max_val = request.voxel_size.unwrap_or(10.0);
+                        passthrough_filter(&pointcloud.points, "x", min_val, max_val)
+                    }
+                    "passthrough_y" => {
+                        let min_val = request.threshold.unwrap_or(0.0);
+                        let max_val = request.voxel_size.unwrap_or(10.0);
+                        passthrough_filter(&pointcloud.points, "y", min_val, max_val)
+                    }
+                    "passthrough_z" => {
+                        let min_val = request.threshold.unwrap_or(0.0);
+                        let max_val = request.voxel_size.unwrap_or(10.0);
+                        passthrough_filter(&pointcloud.points, "z", min_val, max_val)
                     }
                     _ => Err(ProcessingError::Processing(format!("Unknown filter type: {}", filter_type)))
                 }

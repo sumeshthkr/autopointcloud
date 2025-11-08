@@ -8,8 +8,9 @@ use anyhow::Result;
 
 mod pointcloud;
 mod handlers;
+mod processing;
 
-use crate::pointcloud::{PointCloud, ProcessingError};
+use crate::pointcloud::PointCloud;
 use handlers::*;
 
 pub struct AppState {
@@ -17,6 +18,14 @@ pub struct AppState {
 }
 
 async fn index() -> impl Responder {
+    // Serve the new professional UI
+    HttpResponse::Ok()
+        .content_type("text/html")
+        .body(include_str!("../static/app.html"))
+}
+
+async fn index_old() -> impl Responder {
+    // Keep old interface for reference
     HttpResponse::Ok()
         .content_type("text/html")
         .body(include_str!("../static/index.html"))
@@ -51,6 +60,7 @@ async fn main() -> Result<()> {
             .wrap(cors)
             .service(Files::new("/static", "./static"))
             .service(web::resource("/").route(web::get().to(index)))
+            .service(web::resource("/old").route(web::get().to(index_old)))
             .service(web::resource("/api/health").route(web::get().to(health_check)))
             .service(
                 web::scope("/api")
