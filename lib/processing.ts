@@ -1,8 +1,12 @@
-import { Point3D, PointCloud, ProcessingOptions, ProcessingResult } from './types'
+import { Point3D, PointCloud, ProcessingOptions, ProcessingResult, Face } from './types'
+import { AdvancedProcessor } from './advanced-processing'
+import { MeshProcessor } from './mesh-processing'
 
 export class PointCloudProcessor {
   static async process(pointCloud: PointCloud, options: ProcessingOptions): Promise<ProcessingResult> {
     let processedPoints: Point3D[] = []
+    let processedFaces: Face[] | undefined = pointCloud.faces
+    let metadata: ProcessingResult['metadata'] = {}
     
     switch (options.filterType) {
       case 'downsample':
@@ -39,6 +43,113 @@ export class PointCloudProcessor {
           options.maxValue ?? Infinity
         )
         break
+      case 'bilateral':
+        processedPoints = this.bilateralFilter(
+          pointCloud.points,
+          options.sigmaS || 0.1,
+          options.sigmaR || 0.05
+        )
+        break
+      case 'conditional':
+        if (!options.condition) {
+          throw new Error('Conditional filter requires a condition function')
+        }
+        processedPoints = pointCloud.points.filter(options.condition)
+        break
+      case 'crop_box':
+        if (!options.minPoint || !options.maxPoint) {
+          throw new Error('Crop box filter requires minPoint and maxPoint')
+        }
+        processedPoints = this.cropBox(pointCloud.points, options.minPoint, options.maxPoint)
+        break
+      case 'mls_smoothing':
+        processedPoints = this.mlsSmoothing(
+          pointCloud.points,
+          options.searchRadius || 0.03,
+          options.polynomialOrder || 2
+        )
+        break
+      case 'normal_estimation':
+        processedPoints = AdvancedProcessor.estimateNormals(
+          pointCloud.points,
+          options.kNeighbors || 30,
+          options.normalRadius
+        )
+        break
+      case 'plane_segmentation':
+        const planeResult = AdvancedProcessor.segmentPlane(
+          pointCloud.points,
+          options.distanceThreshold || 0.01,
+          options.maxIterations || 1000
+        )
+        processedPoints = planeResult.inliers.map(idx => pointCloud.points[idx])
+        metadata.plane = planeResult.plane
+        break
+      case 'euclidean_clustering':
+        const clusters = AdvancedProcessor.extractClusters(
+          pointCloud.points,
+          options.clusterTolerance || 0.02,
+          options.minClusterSize || 100,
+          options.maxClusterSize || 25000
+        )
+        // Assign cluster colors to points
+        processedPoints = pointCloud.points.map(p => ({ ...p }))
+        for (const cluster of clusters) {
+          for (const idx of cluster.indices) {
+            processedPoints[idx].color = cluster.color
+          }
+        }
+        metadata.clusters = clusters
+        break
+      case 'region_growing':
+        const regions = AdvancedProcessor.regionGrowingSegmentation(
+          pointCloud.points,
+          options.kNeighbors || 30,
+          options.smoothnessThreshold || 5.0,
+          options.curvatureThreshold || 1.0
+        )
+        processedPoints = pointCloud.points.map(p => ({ ...p }))
+        for (const region of regions) {
+          for (const idx of region.indices) {
+            processedPoints[idx].color = region.color
+          }
+        }
+        metadata.clusters = regions
+        break
+      case 'mesh_smoothing':
+        if (!pointCloud.isMesh || !pointCloud.faces) {
+          throw new Error('Mesh smoothing requires mesh data')
+        }
+        processedPoints = MeshProcessor.laplacianSmoothing(
+          pointCloud.points,
+          pointCloud.faces,
+          options.iterations || 10,
+          options.lambda || 0.5
+        )
+        break
+      case 'mesh_decimation':
+        if (!pointCloud.isMesh || !pointCloud.faces) {
+          throw new Error('Mesh decimation requires mesh data')
+        }
+        const decimated = MeshProcessor.decimateMesh(
+          pointCloud.points,
+          pointCloud.faces,
+          options.targetFaceCount || Math.floor(pointCloud.faces.length * 0.5)
+        )
+        processedPoints = decimated.vertices
+        processedFaces = decimated.faces
+        break
+      case 'mesh_subdivision':
+        if (!pointCloud.isMesh || !pointCloud.faces) {
+          throw new Error('Mesh subdivision requires mesh data')
+        }
+        const subdivided = MeshProcessor.loopSubdivision(
+          pointCloud.points,
+          pointCloud.faces
+        )
+        processedPoints = subdivided.vertices
+        processedFaces = subdivided.faces
+        break
       default:
         throw new Error(`Unknown filter type: ${options.filterType}`)
     }
@@ -49,6 +160,8 @@ export class PointCloudProcessor {
       points: processedPoints,
       numPoints: processedPoints.length,
       boundingBox: this.calculateBoundingBox(processedPoints),
+      faces: processedFaces,
+      numFaces: processedFaces?.length,
     }
     
     return {
@@ -58,6 +171,7 @@ export class PointCloudProcessor {
       method: options.filterType,
       success: true,
       pointCloud: newPointCloud,
+      metadata,
     }
   }
 
@@ -141,6 +255,107 @@ export class PointCloudProcessor {
     max: number
   ): Point3D[] {
     return points.filter(p => p[axis] >= min && p[axis] <= max)
+  }
+
+  private static bilateralFilter(
+    points: Point3D[],
+    sigmaS: number,
+    sigmaR: number
+  ): Point3D[] {
+    // Edge-preserving smoothing
+    const result: Point3D[] = []
+    
+    for (let i = 0; i < points.length; i++) {
+      const point = points[i]
+      let sumWeights = 0
+      let sumX = 0, sumY = 0, sumZ = 0
+      
+      for (let j = 0; j < points.length; j++) {
+        if (i === j) continue
+        
+        const neighbor = points[j]
+        const spatialDist = this.distance(point, neighbor)
+        
+        if (spatialDist > 3 * sigmaS) continue
+        
+        // Spatial weight
+        const ws = Math.exp(-(spatialDist * spatialDist) / (2 * sigmaS * sigmaS))
+        
+        // Range weight (based on intensity or Z value)
+        const rangeDiff = point.intensity !== undefined && neighbor.intensity !== undefined
+          ? Math.abs(point.intensity - neighbor.intensity)
+          : Math.abs(point.z - neighbor.z)
+        
+        const wr = Math.exp(-(rangeDiff * rangeDiff) / (2 * sigmaR * sigmaR))
+        
+        const weight = ws * wr
+        sumWeights += weight
+        sumX += weight * neighbor.x
+        sumY += weight * neighbor.y
+        sumZ += weight * neighbor.z
+      }
+      
+      if (sumWeights > 0) {
+        result.push({
+          ...point,
+          x: sumX / sumWeights,
+          y: sumY / sumWeights,
+          z: sumZ / sumWeights
+        })
+      } else {
+        result.push({ ...point })
+      }
+    }
+    
+    return result
+  }
+
+  private static cropBox(
+    points: Point3D[],
+    minPoint: Point3D,
+    maxPoint: Point3D
+  ): Point3D[] {
+    return points.filter(p =>
+      p.x >= minPoint.x && p.x <= maxPoint.x &&
+      p.y >= minPoint.y && p.y <= maxPoint.y &&
+      p.z >= minPoint.z && p.z <= maxPoint.z
+    )
+  }
+
+  private static mlsSmoothing(
+    points: Point3D[],
+    searchRadius: number,
+    polynomialOrder: number
+  ): Point3D[] {
+    // Moving Least Squares surface smoothing
+    const result: Point3D[] = []
+    
+    for (let i = 0; i < points.length; i++) {
+      const point = points[i]
+      const neighbors: Point3D[] = []
+      
+      for (let j = 0; j < points.length; j++) {
+        if (this.distance(point, points[j]) <= searchRadius) {
+          neighbors.push(points[j])
+        }
+      }
+      
+      if (neighbors.length < 3) {
+        result.push({ ...point })
+        continue
+      }
+      
+      // Fit local plane (simplified MLS)
+      const centroid = this.calculateCentroid(neighbors)
+      
+      // Project point onto local surface
+      result.push({
+        ...point,
+        z: centroid.z + (point.z - centroid.z) * 0.5
+      })
+    }
+    
+    return result
   }
 
   private static getVoxelKey(point: Point3D, voxelSize: number): string {

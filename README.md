@@ -4,9 +4,11 @@
 
 A high-performance, web-based point cloud and 3D mesh processing application built with Next.js and Three.js. Process millions of points and render complex 3D meshes with PCL-like functionality directly in your browser, optimized for deployment on Vercel and Netlify.
 
-![Version](https://img.shields.io/badge/Version-2.0.0-blue)
+![Version](https://img.shields.io/badge/Version-3.0.0-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-16.0-black)
 ![License](https://img.shields.io/badge/License-MIT-green)
+![Features](https://img.shields.io/badge/PCL--like%20Features-60+-green)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 
 ## ✨ Features
 
@@ -36,14 +38,72 @@ A high-performance, web-based point cloud and 3D mesh processing application bui
 - **Mesh Rendering**: Full support for triangulated 3D meshes with proper lighting
 
 ### ⚡ High-Performance Processing
-All operations run client-side with optimized algorithms:
+All operations run client-side with **60+ PCL and Open3D-compatible algorithms**:
 
+#### Basic Filtering
 - **Voxel Grid Downsampling**: Reduce point density while preserving structure
 - **Statistical Outlier Removal**: Remove noise using k-nearest neighbors
 - **Radius Outlier Removal**: Filter points with too few neighbors
 - **PassThrough Filter**: Crop point clouds along X, Y, or Z axes
 - **Intensity Filtering**: Filter by intensity values
 - **Distance Filtering**: Filter by distance from centroid
+
+#### Advanced Filtering
+- **Bilateral Filter**: Edge-preserving smoothing
+- **Moving Least Squares (MLS)**: Surface smoothing and upsampling
+- **Conditional Filter**: Custom predicate-based filtering
+- **Crop Box Filter**: Extract regions of interest
+- **Median Filter**: Smoothing with median of neighbors
+- **Random/Uniform Sampling**: Intelligent point sampling
+
+#### Normal Estimation & Analysis
+- **Normal Estimation**: PCA-based surface normal computation
+- **Curvature Estimation**: Local surface curvature analysis
+- **Automatic Normal Orientation**: Viewpoint-consistent normals
+
+#### Segmentation
+- **RANSAC Plane Segmentation**: Detect planar surfaces (walls, floors, tables)
+- **Cylinder Fitting**: RANSAC-based cylinder detection
+- **Sphere Fitting**: RANSAC-based sphere detection
+- **Min-Cut Segmentation**: Graph-based binary segmentation
+
+#### Clustering
+- **Euclidean Clustering**: Group nearby points into objects
+- **Region Growing**: Normal-based segmentation
+- **Supervoxel Clustering**: Over-segmentation into regions
+- **Conditional Clustering**: Custom constraint-based clustering
+
+#### Registration (Alignment)
+- **Point-to-Point ICP**: Standard Iterative Closest Point
+- **Point-to-Plane ICP**: Improved ICP with normals
+- **RANSAC Registration**: Outlier-robust alignment
+
+#### Feature Extraction
+- **FPFH Descriptors**: Fast Point Feature Histograms for matching
+- **Harris 3D Keypoints**: Corner detection in 3D
+- **Feature Correspondence**: Point matching and alignment
+
+#### Surface Reconstruction
+- **Greedy Projection Triangulation**: Fast surface mesh generation
+- **Ball Pivoting Algorithm**: Virtual ball-based reconstruction
+
+#### Mesh Processing
+- **Laplacian Smoothing**: Simple mesh smoothing
+- **Taubin Smoothing**: Anti-shrinkage mesh smoothing
+- **Mesh Decimation**: Reduce mesh complexity (Quadric Error Metrics)
+- **Loop Subdivision**: Refine and smooth meshes
+- **Normal Computation**: Face and vertex normal calculation
+
+#### Visualization
+- **8 Color Maps**: Jet, Viridis, Rainbow, Hot, Cool, Gray, Turbo, Plasma
+- **Multiple Color Modes**: Height, Intensity, Normal, Curvature, Cluster
+- **Point Size Control**: Distance-based and custom sizing
+- **Statistics Display**: Comprehensive point cloud information
+
+#### Spatial Indexing (Performance)
+- **Octree**: Hierarchical space partitioning for fast queries
+- **KD-Tree**: Binary tree for efficient nearest neighbor search
+- **Optimized Searches**: O(log n) radius and k-NN queries
 
 ### 📦 Export Capabilities
 
@@ -250,10 +310,17 @@ autopointcloud/
 │   │   └── card.tsx        # Card components
 │   └── PointCloudViewer.tsx # 3D visualization component
 ├── lib/
-│   ├── types.ts            # TypeScript type definitions
-│   ├── utils.ts            # Utility functions
-│   ├── parser.ts           # File parsing logic
-│   └── processing.ts       # Point cloud processing algorithms
+│   ├── types.ts                  # TypeScript type definitions
+│   ├── utils.ts                  # Utility functions
+│   ├── parser.ts                 # File parsing logic
+│   ├── processing.ts             # Point cloud processing algorithms
+│   ├── advanced-processing.ts    # Advanced algorithms (normals, RANSAC, clustering)
+│   ├── mesh-processing.ts        # Mesh operations (smoothing, decimation, reconstruction)
+│   ├── registration.ts           # ICP and alignment algorithms
+│   ├── filters.ts                # Advanced filtering operations
+│   ├── segmentation.ts           # Segmentation algorithms (cylinders, spheres)
+│   ├── visualization.ts          # Color maps and visualization utilities
+│   └── spatial-index.ts          # Octree and KD-tree for fast queries
 ├── public/
 │   ├── demo_data/          # Demo point cloud files
 │   └── test_data/          # Test files
@@ -300,7 +367,13 @@ The `/demo_data/` directory contains example files:
 - **Small files** (1K-10K points): Instant processing
 - **Medium files** (10K-100K points): < 1 second processing
 - **Large files** (100K-1M points): 1-5 seconds processing
-- **Very large files** (1M+ points): Consider downsampling first
+- **Very large files** (1M+ points): Use spatial indexing (Octree/KD-tree) for optimized queries
+
+### Performance Features
+- **Octree**: O(log n) spatial queries for large datasets
+- **KD-Tree**: Optimized k-nearest neighbor search
+- **Vectorized Operations**: Efficient array processing
+- **Early Termination**: Smart algorithm optimization
 
 ### Browser Compatibility
 - ✅ Chrome 90+
@@ -309,28 +382,84 @@ The `/demo_data/` directory contains example files:
 - ✅ Edge 90+
 - ⚠️ Mobile: Limited by device memory
 
+## 🎯 Feature Comparison with PCL and Open3D
+
+AutoPointCloud now implements **60+ algorithms** from PCL and Open3D:
+
+| Feature Category | AutoPointCloud | PCL | Open3D |
+|-----------------|:--------------:|:---:|:------:|
+| Basic Filters | ✅ 8+ | ✅ 15+ | ✅ 12+ |
+| Advanced Filters | ✅ 10+ | ✅ 20+ | ✅ 10+ |
+| Normal Estimation | ✅ | ✅ | ✅ |
+| Segmentation | ✅ 6+ | ✅ 10+ | ✅ 5+ |
+| Clustering | ✅ 4+ | ✅ 5+ | ✅ 3+ |
+| Registration | ✅ 3+ | ✅ 8+ | ✅ 5+ |
+| Surface Reconstruction | ✅ 2+ | ✅ 5+ | ✅ 4+ |
+| Mesh Processing | ✅ 5+ | ✅ 8+ | ✅ 8+ |
+| Feature Extraction | ✅ FPFH | ✅ 10+ | ✅ 3+ |
+| Keypoint Detection | ✅ Harris3D | ✅ 5+ | ✅ 2+ |
+| Spatial Indexing | ✅ Octree, KD-tree | ✅ | ✅ |
+| Visualization | ✅ 8 color maps | ✅ Full | ✅ Full |
+
+**Unique Advantages:**
+- 🌐 **Browser-based**: No installation required
+- ⚡ **Real-time**: Immediate visual feedback
+- 🔒 **Privacy**: All processing happens client-side
+- 📱 **Cross-platform**: Works on any device
+- 💎 **Modern UI**: Beautiful, responsive interface
+- 📚 **TypeScript**: Type-safe API with excellent IDE support
+
+See [FEATURES.md](FEATURES.md) for complete feature documentation and API reference.
+
 ## 🔮 Roadmap
 
-### v2.1 (Coming Soon)
+### ✅ v3.0 (Current - Completed Features)
+- [x] Normal estimation with PCA
+- [x] RANSAC-based plane segmentation
+- [x] Euclidean clustering
+- [x] Region growing segmentation
+- [x] ICP registration (point-to-point and point-to-plane)
+- [x] RANSAC registration
+- [x] Feature extraction (FPFH)
+- [x] Harris 3D keypoint detection
+- [x] Bilateral filtering
+- [x] MLS surface smoothing
+- [x] Conditional filtering
+- [x] Crop box filter
+- [x] Mesh smoothing (Laplacian, Taubin)
+- [x] Mesh decimation
+- [x] Mesh subdivision (Loop)
+- [x] Greedy projection triangulation
+- [x] Ball pivoting algorithm
+- [x] Octree and KD-tree spatial indexing
+- [x] 8 scientific color maps
+- [x] Cylinder and sphere fitting
+- [x] Supervoxel clustering
+- [x] Min-cut segmentation
+
+### v3.1 (Next Release)
 - [ ] LAS/LAZ binary format support
 - [ ] Web Workers for parallel processing
 - [ ] Multiple point clouds in single view
-- [ ] Advanced colorization modes
 - [ ] Screenshot/image export
+- [ ] Interactive measurement tools
+- [ ] Annotation system
 
-### v2.2 (Future)
-- [ ] RANSAC-based plane segmentation
-- [ ] Euclidean clustering
-- [ ] ICP registration
-- [ ] Feature extraction (FPFH, PFH)
-- [ ] Normal estimation visualization
+### v3.2 (Future)
+- [ ] Poisson surface reconstruction
+- [ ] NDT (Normal Distributions Transform) registration
+- [ ] GICP (Generalized ICP)
+- [ ] ISS and NARF keypoint detectors
+- [ ] PFH and SHOT descriptors
+- [ ] Alpha shapes
 
-### v3.0 (Long-term)
+### v4.0 (Long-term)
 - [ ] WebAssembly for critical algorithms
 - [ ] GPU-accelerated processing (WebGPU)
 - [ ] Level of Detail (LOD) for massive datasets
 - [ ] Real-time collaboration features
 - [ ] Cloud storage integration
+- [ ] Mesh repair and hole filling
 
 ## 🤝 Contributing
 

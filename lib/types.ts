@@ -37,7 +37,10 @@ export interface PointCloud {
 }
 
 export interface ProcessingOptions {
-  filterType: 'downsample' | 'statistical_outlier' | 'radius_outlier' | 'intensity' | 'distance' | 'passthrough_x' | 'passthrough_y' | 'passthrough_z'
+  filterType: 'downsample' | 'statistical_outlier' | 'radius_outlier' | 'intensity' | 'distance' | 'passthrough_x' | 'passthrough_y' | 'passthrough_z' | 
+    'bilateral' | 'conditional' | 'crop_box' | 'mls_smoothing' | 
+    'normal_estimation' | 'plane_segmentation' | 'euclidean_clustering' |
+    'region_growing' | 'mesh_smoothing' | 'mesh_decimation' | 'mesh_subdivision'
   voxelSize?: number
   threshold?: number
   minValue?: number
@@ -46,6 +49,34 @@ export interface ProcessingOptions {
   stdDevMultiplier?: number
   radius?: number
   minNeighbors?: number
+  // Bilateral filter
+  sigmaS?: number
+  sigmaR?: number
+  // Crop box
+  minPoint?: Point3D
+  maxPoint?: Point3D
+  // Conditional filter
+  condition?: (point: Point3D) => boolean
+  // MLS parameters
+  searchRadius?: number
+  polynomialOrder?: number
+  // Normal estimation
+  normalRadius?: number
+  // Plane segmentation (RANSAC)
+  distanceThreshold?: number
+  maxIterations?: number
+  // Clustering
+  clusterTolerance?: number
+  minClusterSize?: number
+  maxClusterSize?: number
+  // Region growing
+  numberOfNeighbors?: number
+  smoothnessThreshold?: number
+  curvatureThreshold?: number
+  // Mesh operations
+  iterations?: number
+  lambda?: number
+  targetFaceCount?: number
 }
 
 export interface ProcessingResult {
@@ -55,4 +86,45 @@ export interface ProcessingResult {
   method: string
   success: boolean
   pointCloud: PointCloud
+  metadata?: {
+    clusters?: Cluster[]
+    plane?: PlaneModel
+    features?: FeatureDescriptor[]
+    transformMatrix?: number[][]
+  }
+}
+
+export interface Cluster {
+  id: number
+  points: Point3D[]
+  indices: number[]
+  centroid: Point3D
+  color: [number, number, number]
+}
+
+export interface PlaneModel {
+  coefficients: [number, number, number, number] // ax + by + cz + d = 0
+  inliers: number[]
+  normal: [number, number, number]
+  centroid: Point3D
+}
+
+export interface FeatureDescriptor {
+  pointIndex: number
+  descriptor: Float32Array
+  type: 'FPFH' | 'PFH' | 'SHOT' | 'NARF'
+}
+
+export interface KeyPoint {
+  point: Point3D
+  index: number
+  response: number
+  type: 'Harris' | 'ISS' | 'SIFT'
+}
+
+export interface RegistrationResult {
+  transformMatrix: number[][]
+  fitness: number
+  inlierRMSE: number
+  correspondences: number[][]
 }
