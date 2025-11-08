@@ -1,7 +1,7 @@
 // Advanced Point Cloud Processing Functions
+use crate::pointcloud::{Point3D, ProcessingError};
 use nalgebra::{Point3, Vector3};
 use rayon::prelude::*;
-use crate::pointcloud::{Point3D, ProcessingError};
 use std::collections::HashMap;
 
 /// Statistical outlier removal
@@ -14,9 +14,11 @@ pub fn statistical_outlier_removal(
     if points.is_empty() {
         return Err(ProcessingError::EmptyPointCloud);
     }
-    
+
     if k_neighbors == 0 || k_neighbors >= points.len() {
-        return Err(ProcessingError::Processing("Invalid k_neighbors value".to_string()));
+        return Err(ProcessingError::Processing(
+            "Invalid k_neighbors value".to_string(),
+        ));
     }
 
     // Compute mean distance for each point to its k nearest neighbors
@@ -47,7 +49,8 @@ pub fn statistical_outlier_removal(
 
     // Compute mean and standard deviation of distances
     let mean = distances.iter().sum::<f64>() / distances.len() as f64;
-    let variance = distances.iter().map(|d| (d - mean).powi(2)).sum::<f64>() / distances.len() as f64;
+    let variance =
+        distances.iter().map(|d| (d - mean).powi(2)).sum::<f64>() / distances.len() as f64;
     let std_dev = variance.sqrt();
 
     let threshold = mean + std_dev_mul * std_dev;
@@ -207,7 +210,9 @@ pub fn estimate_normals(
     }
 
     if k_neighbors < 3 {
-        return Err(ProcessingError::Processing("Need at least 3 neighbors for normal estimation".to_string()));
+        return Err(ProcessingError::Processing(
+            "Need at least 3 neighbors for normal estimation".to_string(),
+        ));
     }
 
     let normals: Vec<(Point3D, Vector3<f64>)> = points
@@ -241,7 +246,7 @@ pub fn estimate_normals(
                 let dx = p.x - cx;
                 let dy = p.y - cy;
                 let dz = p.z - cz;
-                
+
                 cov[0][0] += dx * dx;
                 cov[0][1] += dx * dy;
                 cov[0][2] += dx * dz;
@@ -258,11 +263,11 @@ pub fn estimate_normals(
                 let p1 = Point3::new(neighbors[0].1.x, neighbors[0].1.y, neighbors[0].1.z);
                 let p2 = Point3::new(neighbors[1].1.x, neighbors[1].1.y, neighbors[1].1.z);
                 let center = Point3::new(point.x, point.y, point.z);
-                
+
                 let v1 = p1 - center;
                 let v2 = p2 - center;
                 let normal = v1.cross(&v2);
-                
+
                 if normal.norm() > 1e-6 {
                     let normalized = normal.normalize();
                     return (point.clone(), normalized);
@@ -287,36 +292,30 @@ pub fn voxel_downsample_parallel(
     }
 
     if voxel_size <= 0.0 {
-        return Err(ProcessingError::Processing("Voxel size must be positive".to_string()));
+        return Err(ProcessingError::Processing(
+            "Voxel size must be positive".to_string(),
+        ));
     }
 
     // Use parallel HashMap building
     let voxel_map: HashMap<(i64, i64, i64), Vec<Point3D>> = points
         .par_iter()
-        .fold(
-            HashMap::new,
-            |mut map, point| {
-                let voxel_x = (point.x / voxel_size).floor() as i64;
-                let voxel_y = (point.y / voxel_size).floor() as i64;
-                let voxel_z = (point.z / voxel_size).floor() as i64;
-                
-                map.entry((voxel_x, voxel_y, voxel_z))
-                    .or_insert_with(Vec::new)
-                    .push(point.clone());
-                map
-            },
-        )
-        .reduce(
-            HashMap::new,
-            |mut map1, map2| {
-                for (key, mut points) in map2 {
-                    map1.entry(key)
-                        .or_insert_with(Vec::new)
-                        .append(&mut points);
-                }
-                map1
-            },
-        );
+        .fold(HashMap::new, |mut map, point| {
+            let voxel_x = (point.x / voxel_size).floor() as i64;
+            let voxel_y = (point.y / voxel_size).floor() as i64;
+            let voxel_z = (point.z / voxel_size).floor() as i64;
+
+            map.entry((voxel_x, voxel_y, voxel_z))
+                .or_insert_with(Vec::new)
+                .push(point.clone());
+            map
+        })
+        .reduce(HashMap::new, |mut map1, map2| {
+            for (key, mut points) in map2 {
+                map1.entry(key).or_insert_with(Vec::new).append(&mut points);
+            }
+            map1
+        });
 
     // Compute centroid for each voxel in parallel
     let downsampled: Vec<Point3D> = voxel_map
@@ -329,10 +328,7 @@ pub fn voxel_downsample_parallel(
 
             // Average intensity and color if available
             let avg_intensity = if voxel_points[0].intensity.is_some() {
-                let sum_intensity: f64 = voxel_points
-                    .iter()
-                    .filter_map(|p| p.intensity)
-                    .sum();
+                let sum_intensity: f64 = voxel_points.iter().filter_map(|p| p.intensity).sum();
                 Some(sum_intensity / count)
             } else {
                 None
@@ -382,11 +378,41 @@ mod tests {
 
     fn create_test_points() -> Vec<Point3D> {
         vec![
-            Point3D { x: 0.0, y: 0.0, z: 0.0, intensity: Some(100.0), color: None },
-            Point3D { x: 1.0, y: 0.0, z: 0.0, intensity: Some(120.0), color: None },
-            Point3D { x: 0.0, y: 1.0, z: 0.0, intensity: Some(110.0), color: None },
-            Point3D { x: 1.0, y: 1.0, z: 0.0, intensity: Some(130.0), color: None },
-            Point3D { x: 10.0, y: 10.0, z: 10.0, intensity: Some(50.0), color: None }, // Outlier
+            Point3D {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                intensity: Some(100.0),
+                color: None,
+            },
+            Point3D {
+                x: 1.0,
+                y: 0.0,
+                z: 0.0,
+                intensity: Some(120.0),
+                color: None,
+            },
+            Point3D {
+                x: 0.0,
+                y: 1.0,
+                z: 0.0,
+                intensity: Some(110.0),
+                color: None,
+            },
+            Point3D {
+                x: 1.0,
+                y: 1.0,
+                z: 0.0,
+                intensity: Some(130.0),
+                color: None,
+            },
+            Point3D {
+                x: 10.0,
+                y: 10.0,
+                z: 10.0,
+                intensity: Some(50.0),
+                color: None,
+            }, // Outlier
         ]
     }
 
@@ -413,12 +439,7 @@ mod tests {
     #[test]
     fn test_transform() {
         let points = create_test_points();
-        let result = transform_pointcloud(
-            &points,
-            Some((1.0, 0.0, 0.0)),
-            None,
-            Some(2.0),
-        );
+        let result = transform_pointcloud(&points, Some((1.0, 0.0, 0.0)), None, Some(2.0));
         assert!(result.is_ok());
         let transformed = result.unwrap();
         assert_eq!(transformed.len(), points.len());

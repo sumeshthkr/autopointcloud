@@ -1,16 +1,17 @@
-use actix_web::{web, HttpResponse, Responder};
-use serde::{Deserialize, Serialize};
-use log::info;
-use uuid::Uuid;
 use actix_multipart::Multipart;
+use actix_web::{web, HttpResponse, Responder};
 use futures::StreamExt;
+use log::info;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-use crate::pointcloud::{PointCloud, ProcessingError, generate_sample_pointcloud, parse_pointcloud, detect_format, export_to_pcd, export_to_ply, export_to_xyz};
+use crate::pointcloud::{
+    detect_format, export_to_pcd, export_to_ply, export_to_xyz, generate_sample_pointcloud,
+    parse_pointcloud, PointCloud, ProcessingError,
+};
 use crate::processing::{
-    statistical_outlier_removal, 
-    radius_outlier_removal, 
-    passthrough_filter,
-    voxel_downsample_parallel
+    passthrough_filter, radius_outlier_removal, statistical_outlier_removal,
+    voxel_downsample_parallel,
 };
 use crate::AppState;
 
@@ -54,10 +55,10 @@ pub async fn upload_pointcloud(
     mut payload: Multipart,
 ) -> impl Responder {
     info!("Receiving point cloud file upload");
-    
+
     let mut file_content = String::new();
     let mut file_name = String::new();
-    
+
     // Read the multipart form data
     while let Some(item) = payload.next().await {
         match item {
@@ -66,7 +67,7 @@ pub async fn upload_pointcloud(
                 if let Some(name) = content_disposition.get_filename() {
                     file_name = name.to_string();
                     info!("Uploading file: {}", file_name);
-                    
+
                     // Read the field content into a string
                     while let Some(chunk) = field.next().await {
                         match chunk {
@@ -89,45 +90,55 @@ pub async fn upload_pointcloud(
             }
         }
     }
-    
+
     if file_content.is_empty() {
         info!("No file content received");
         return HttpResponse::BadRequest()
             .json(serde_json::json!({"error": "No file content provided"}));
     }
-    
+
     info!("File received with {} bytes", file_content.len());
-    
+
     // Detect format and parse using universal parser
     let format_detected = detect_format(&file_content, &file_name);
     let (points, points_parsed) = match parse_pointcloud(&file_content, &file_name) {
         Ok(parsed_points) => {
             let len = parsed_points.len();
-            info!("Successfully parsed {} file with {} points", format_detected, len);
+            info!(
+                "Successfully parsed {} file with {} points",
+                format_detected, len
+            );
             (parsed_points.clone(), len)
         }
         Err(e) => {
-            info!("Parsing failed ({}): {}, falling back to sample", format_detected, e);
+            info!(
+                "Parsing failed ({}): {}, falling back to sample",
+                format_detected, e
+            );
             (generate_sample_pointcloud(1000), 0)
         }
     };
-    
+
     let file_size = file_content.len() as u64;
     let cloud_id = Uuid::new_v4().to_string();
-    let name = format!("PointCloud {} ({})", cloud_id.chars().take(8).collect::<String>(), format_detected);
-    
-    let pointcloud = PointCloud::new(
-        cloud_id.clone(),
-        name.clone(),
-        points.clone(),
-        file_size,
+    let name = format!(
+        "PointCloud {} ({})",
+        cloud_id.chars().take(8).collect::<String>(),
+        format_detected
     );
+
+    let pointcloud = PointCloud::new(cloud_id.clone(), name.clone(), points.clone(), file_size);
 
     let mut pointclouds = data.pointclouds.lock().unwrap();
     pointclouds.insert(cloud_id.clone(), pointcloud);
     drop(pointclouds);
 
-    info!("Uploaded new point cloud: {} with {} points (format: {})", name, points.len(), format_detected);
+    info!(
+        "Uploaded new point cloud: {} with {} points (format: {})",
+        name,
+        points.len(),
+        format_detected
+    );
 
     HttpResponse::Ok().json(UploadResponse {
         id: cloud_id,
@@ -144,14 +155,11 @@ pub async fn get_pointcloud_info(
 ) -> impl Responder {
     let id = path.into_inner();
     let pointclouds = data.pointclouds.lock().unwrap();
-    
+
     match pointclouds.get(&id) {
-        Some(pointcloud) => {
-            HttpResponse::Ok().json(pointcloud.to_info())
-        }
+        Some(pointcloud) => HttpResponse::Ok().json(pointcloud.to_info()),
         None => {
-            HttpResponse::NotFound()
-                .json(serde_json::json!({"error": "Point cloud not found"}))
+            HttpResponse::NotFound().json(serde_json::json!({"error": "Point cloud not found"}))
         }
     }
 }
@@ -162,17 +170,14 @@ pub async fn get_pointcloud_points(
 ) -> impl Responder {
     let id = path.into_inner();
     let pointclouds = data.pointclouds.lock().unwrap();
-    
+
     match pointclouds.get(&id) {
-        Some(pointcloud) => {
-            HttpResponse::Ok().json(serde_json::json!({
-                "id": pointcloud.id,
-                "points": pointcloud.points
-            }))
-        }
+        Some(pointcloud) => HttpResponse::Ok().json(serde_json::json!({
+            "id": pointcloud.id,
+            "points": pointcloud.points
+        })),
         None => {
-            HttpResponse::NotFound()
-                .json(serde_json::json!({"error": "Point cloud not found"}))
+            HttpResponse::NotFound().json(serde_json::json!({"error": "Point cloud not found"}))
         }
     }
 }
@@ -184,7 +189,7 @@ pub async fn process_pointcloud(
 ) -> impl Responder {
     let id = path.into_inner();
     let pointclouds = data.pointclouds.lock().unwrap();
-    
+
     match pointclouds.get(&id) {
         Some(pointcloud) => {
             let original_points = pointcloud.points.len();
@@ -194,14 +199,18 @@ pub async fn process_pointcloud(
                         if let Some(threshold) = request.threshold {
                             pointcloud.apply_filter("intensity", threshold)
                         } else {
-                            Err(ProcessingError::Processing("Threshold required for intensity filter".to_string()))
+                            Err(ProcessingError::Processing(
+                                "Threshold required for intensity filter".to_string(),
+                            ))
                         }
                     }
                     "distance" => {
                         if let Some(threshold) = request.threshold {
                             pointcloud.apply_filter("distance", threshold)
                         } else {
-                            Err(ProcessingError::Processing("Threshold required for distance filter".to_string()))
+                            Err(ProcessingError::Processing(
+                                "Threshold required for distance filter".to_string(),
+                            ))
                         }
                     }
                     "downsample" => {
@@ -209,7 +218,9 @@ pub async fn process_pointcloud(
                             // Use optimized parallel downsampling
                             voxel_downsample_parallel(&pointcloud.points, voxel_size)
                         } else {
-                            Err(ProcessingError::Processing("Voxel size required for downsampling".to_string()))
+                            Err(ProcessingError::Processing(
+                                "Voxel size required for downsampling".to_string(),
+                            ))
                         }
                     }
                     "statistical_outlier" => {
@@ -237,43 +248,40 @@ pub async fn process_pointcloud(
                         let max_val = request.voxel_size.unwrap_or(10.0);
                         passthrough_filter(&pointcloud.points, "z", min_val, max_val)
                     }
-                    _ => Err(ProcessingError::Processing(format!("Unknown filter type: {}", filter_type)))
+                    _ => Err(ProcessingError::Processing(format!(
+                        "Unknown filter type: {}",
+                        filter_type
+                    ))),
                 }
             } else {
-                Err(ProcessingError::Processing("No filter type specified".to_string()))
+                Err(ProcessingError::Processing(
+                    "No filter type specified".to_string(),
+                ))
             };
 
             match processed_result {
-                Ok(processed_points) => {
-                    HttpResponse::Ok().json(ProcessResponse {
-                        id: id.clone(),
-                        original_points,
-                        processed_points: processed_points.len(),
-                        method: request.filter_type.clone().unwrap_or_default(),
-                        success: true,
-                    })
-                }
+                Ok(processed_points) => HttpResponse::Ok().json(ProcessResponse {
+                    id: id.clone(),
+                    original_points,
+                    processed_points: processed_points.len(),
+                    method: request.filter_type.clone().unwrap_or_default(),
+                    success: true,
+                }),
                 Err(e) => {
-                    HttpResponse::BadRequest()
-                        .json(serde_json::json!({"error": e.to_string()}))
+                    HttpResponse::BadRequest().json(serde_json::json!({"error": e.to_string()}))
                 }
             }
         }
         None => {
-            HttpResponse::NotFound()
-                .json(serde_json::json!({"error": "Point cloud not found"}))
+            HttpResponse::NotFound().json(serde_json::json!({"error": "Point cloud not found"}))
         }
     }
 }
 
-pub async fn list_pointclouds(
-    data: web::Data<AppState>,
-) -> impl Responder {
+pub async fn list_pointclouds(data: web::Data<AppState>) -> impl Responder {
     let pointclouds = data.pointclouds.lock().unwrap();
-    let cloud_list: Vec<_> = pointclouds.values()
-        .map(|pc| pc.to_info())
-        .collect();
-    
+    let cloud_list: Vec<_> = pointclouds.values().map(|pc| pc.to_info()).collect();
+
     HttpResponse::Ok().json(PointCloudListResponse {
         pointclouds: cloud_list,
     })
@@ -285,7 +293,7 @@ pub async fn delete_pointcloud(
 ) -> impl Responder {
     let id = path.into_inner();
     let mut pointclouds = data.pointclouds.lock().unwrap();
-    
+
     match pointclouds.remove(&id) {
         Some(_) => {
             info!("Deleted point cloud: {}", id);
@@ -293,8 +301,7 @@ pub async fn delete_pointcloud(
                 .json(serde_json::json!({"message": "Point cloud deleted successfully"}))
         }
         None => {
-            HttpResponse::NotFound()
-                .json(serde_json::json!({"error": "Point cloud not found"}))
+            HttpResponse::NotFound().json(serde_json::json!({"error": "Point cloud not found"}))
         }
     }
 }
@@ -311,11 +318,11 @@ pub async fn export_pointcloud(
 ) -> impl Responder {
     let id = path.into_inner();
     let pointclouds = data.pointclouds.lock().unwrap();
-    
+
     match pointclouds.get(&id) {
         Some(pointcloud) => {
             let format = query.format.as_deref().unwrap_or("pcd").to_lowercase();
-            
+
             let result = match format.as_str() {
                 "pcd" => export_to_pcd(&pointcloud.points),
                 "ply" => export_to_ply(&pointcloud.points),
@@ -325,17 +332,18 @@ pub async fn export_pointcloud(
                         .json(serde_json::json!({"error": "Unsupported export format. Use 'pcd', 'ply', or 'xyz'."}));
                 }
             };
-            
+
             match result {
                 Ok(content) => {
-                    let filename = format!("{}_{}.{}", 
-                        pointcloud.name.replace(" ", "_"), 
+                    let filename = format!(
+                        "{}_{}.{}",
+                        pointcloud.name.replace(" ", "_"),
                         id.split('-').next().unwrap_or(&id),
                         format
                     );
-                    
+
                     info!("Exporting point cloud {} as {}", id, format);
-                    
+
                     HttpResponse::Ok()
                         .content_type(match format.as_str() {
                             "pcd" => "application/octet-stream",
@@ -343,24 +351,22 @@ pub async fn export_pointcloud(
                             "xyz" => "text/plain",
                             _ => "application/octet-stream",
                         })
-                        .insert_header(("Content-Disposition", format!("attachment; filename=\"{}\"", filename)))
+                        .insert_header((
+                            "Content-Disposition",
+                            format!("attachment; filename=\"{}\"", filename),
+                        ))
                         .body(content)
                 }
-                Err(e) => {
-                    HttpResponse::InternalServerError()
-                        .json(serde_json::json!({"error": format!("Export failed: {}", e)}))
-                }
+                Err(e) => HttpResponse::InternalServerError()
+                    .json(serde_json::json!({"error": format!("Export failed: {}", e)})),
             }
         }
         None => {
-            HttpResponse::NotFound()
-                .json(serde_json::json!({"error": "Point cloud not found"}))
+            HttpResponse::NotFound().json(serde_json::json!({"error": "Point cloud not found"}))
         }
     }
 }
 
 // Helper functions for parsing different file formats
-
-
 
 // Old parsers moved to pointcloud.rs - parse_pcd_string is deprecated
