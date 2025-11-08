@@ -8,6 +8,8 @@ A high-performance, web-based point cloud processing application built with Rust
 ![Rust](https://img.shields.io/badge/Rust-1.70+-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
+> **📌 Note:** This application requires a Rust backend to function. The [Netlify deployment](https://pointcloudauto.netlify.app/) serves an informational landing page only. For the full working application, deploy to [Fly.io](https://fly.io), [Railway](https://railway.app), or [Render](https://render.com), or run locally with `cargo run`.
+
 ## 📸 Screenshots & Demo
 
 ### Material Design Interface
@@ -165,11 +167,13 @@ The application will start on `http://127.0.0.1:8080`
 
 ## 🌐 Deployment
 
-AutoPointCloud can be deployed to various platforms. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+**⚠️ Important:** AutoPointCloud requires a Rust backend and **cannot run on static-only hosting** like Netlify, GitHub Pages, or Vercel. It must be deployed on platforms that support full-stack Rust applications.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
 
 ### Quick Deployment Options
 
-**Fly.io (Recommended for Rust)**
+**Fly.io (Recommended for Rust) ⭐**
 ```bash
 flyctl launch
 flyctl deploy
@@ -178,6 +182,11 @@ flyctl deploy
 **Railway**
 - Connect your GitHub repository
 - Railway auto-detects and deploys Rust apps
+
+**Render**
+- Create a new Web Service
+- Build command: `cargo build --release`
+- Start command: `./target/release/autopointcloud`
 
 **Docker**
 ```bash

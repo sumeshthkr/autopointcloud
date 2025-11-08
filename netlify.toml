@@ -10,15 +10,15 @@
 # The backend API will not be available on Netlify
 
 [build]
-  # Since this is a Rust application, we can't build it directly on Netlify
-  # This would require compiling the Rust binary which Netlify doesn't support well
-  command = "echo 'Note: Full stack deployment requires a Rust-compatible platform. See README for deployment options.'"
+  # This is a Rust backend application - Netlify only serves the static informational page
+  # For full functionality, deploy to Fly.io, Railway, Render, or other Rust-compatible platforms
+  command = "echo '⚠️  Static informational page only. Full app requires Rust backend on Fly.io/Railway/Render.'"
   publish = "static"
 
-# Redirect rules for SPA behavior (if deploying static frontend only)
+# Redirect rules - serve informational landing page for static deployment
 [[redirects]]
   from = "/*"
-  to = "/app.html"
+  to = "/netlify-landing.html"
   status = 200
 
 # Headers for security
