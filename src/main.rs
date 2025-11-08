@@ -68,6 +68,7 @@ async fn main() -> Result<()> {
                     .route("/pointclouds", web::get().to(list_pointclouds))
                     .route("/pointclouds/{id}", web::get().to(get_pointcloud_info))
                     .route("/pointclouds/{id}/points", web::get().to(get_pointcloud_points))
+                    .route("/pointclouds/{id}/export", web::get().to(export_pointcloud))
                     .route("/pointclouds/{id}", web::delete().to(delete_pointcloud))
                     .route("/pointclouds/{id}/process", web::post().to(process_pointcloud))
             )

@@ -643,3 +643,156 @@ fn parse_xyz_string(content: &str) -> Result<Vec<Point3D>, ProcessingError> {
     
     Ok(points)
 }
+
+/// Export point cloud to PCD ASCII format
+pub fn export_to_pcd(points: &[Point3D]) -> Result<String, ProcessingError> {
+    if points.is_empty() {
+        return Err(ProcessingError::EmptyPointCloud);
+    }
+    
+    let has_intensity = points.iter().any(|p| p.intensity.is_some());
+    let has_color = points.iter().any(|p| p.color.is_some());
+    
+    let mut output = String::new();
+    
+    // Header
+    output.push_str("# .PCD v0.7 - Point Cloud Data file format\n");
+    output.push_str("VERSION 0.7\n");
+    
+    // Fields
+    if has_intensity && has_color {
+        output.push_str("FIELDS x y z intensity rgb\n");
+        output.push_str("SIZE 4 4 4 4 4\n");
+        output.push_str("TYPE F F F F U\n");
+        output.push_str("COUNT 1 1 1 1 1\n");
+    } else if has_intensity {
+        output.push_str("FIELDS x y z intensity\n");
+        output.push_str("SIZE 4 4 4 4\n");
+        output.push_str("TYPE F F F F\n");
+        output.push_str("COUNT 1 1 1 1\n");
+    } else if has_color {
+        output.push_str("FIELDS x y z rgb\n");
+        output.push_str("SIZE 4 4 4 4\n");
+        output.push_str("TYPE F F F U\n");
+        output.push_str("COUNT 1 1 1 1\n");
+    } else {
+        output.push_str("FIELDS x y z\n");
+        output.push_str("SIZE 4 4 4\n");
+        output.push_str("TYPE F F F\n");
+        output.push_str("COUNT 1 1 1\n");
+    }
+    
+    output.push_str(&format!("WIDTH {}\n", points.len()));
+    output.push_str("HEIGHT 1\n");
+    output.push_str("VIEWPOINT 0 0 0 1 0 0 0\n");
+    output.push_str(&format!("POINTS {}\n", points.len()));
+    output.push_str("DATA ascii\n");
+    
+    // Data
+    for point in points {
+        output.push_str(&format!("{} {} {}", point.x, point.y, point.z));
+        
+        if has_intensity {
+            output.push_str(&format!(" {}", point.intensity.unwrap_or(0.0)));
+        }
+        
+        if has_color {
+            if let Some([r, g, b]) = point.color {
+                let rgb_packed = ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
+                output.push_str(&format!(" {}", rgb_packed));
+            } else {
+                output.push_str(" 0");
+            }
+        }
+        
+        output.push('\n');
+    }
+    
+    Ok(output)
+}
+
+/// Export point cloud to PLY ASCII format
+pub fn export_to_ply(points: &[Point3D]) -> Result<String, ProcessingError> {
+    if points.is_empty() {
+        return Err(ProcessingError::EmptyPointCloud);
+    }
+    
+    let has_intensity = points.iter().any(|p| p.intensity.is_some());
+    let has_color = points.iter().any(|p| p.color.is_some());
+    
+    let mut output = String::new();
+    
+    // Header
+    output.push_str("ply\n");
+    output.push_str("format ascii 1.0\n");
+    output.push_str(&format!("element vertex {}\n", points.len()));
+    output.push_str("property float x\n");
+    output.push_str("property float y\n");
+    output.push_str("property float z\n");
+    
+    if has_intensity {
+        output.push_str("property float intensity\n");
+    }
+    
+    if has_color {
+        output.push_str("property uchar red\n");
+        output.push_str("property uchar green\n");
+        output.push_str("property uchar blue\n");
+    }
+    
+    output.push_str("end_header\n");
+    
+    // Data
+    for point in points {
+        output.push_str(&format!("{} {} {}", point.x, point.y, point.z));
+        
+        if has_intensity {
+            output.push_str(&format!(" {}", point.intensity.unwrap_or(0.0)));
+        }
+        
+        if has_color {
+            if let Some([r, g, b]) = point.color {
+                output.push_str(&format!(" {} {} {}", r, g, b));
+            } else {
+                output.push_str(" 0 0 0");
+            }
+        }
+        
+        output.push('\n');
+    }
+    
+    Ok(output)
+}
+
+/// Export point cloud to XYZ format
+pub fn export_to_xyz(points: &[Point3D]) -> Result<String, ProcessingError> {
+    if points.is_empty() {
+        return Err(ProcessingError::EmptyPointCloud);
+    }
+    
+    let has_intensity = points.iter().any(|p| p.intensity.is_some());
+    let has_color = points.iter().any(|p| p.color.is_some());
+    
+    let mut output = String::new();
+    
+    // XYZ format doesn't have a header, just data
+    for point in points {
+        output.push_str(&format!("{} {} {}", point.x, point.y, point.z));
+        
+        if has_intensity {
+            output.push_str(&format!(" {}", point.intensity.unwrap_or(0.0)));
+        }
+        
+        if has_color {
+            if let Some([r, g, b]) = point.color {
+                output.push_str(&format!(" {} {} {}", r, g, b));
+            } else if has_color {
+                output.push_str(" 0 0 0");
+            }
+        }
+        
+        output.push('\n');
+    }
+    
+    Ok(output)
+}

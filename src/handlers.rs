@@ -5,12 +5,11 @@ use uuid::Uuid;
 use actix_multipart::Multipart;
 use futures::StreamExt;
 
-use crate::pointcloud::{PointCloud, ProcessingError, generate_sample_pointcloud, parse_pointcloud, detect_format};
+use crate::pointcloud::{PointCloud, ProcessingError, generate_sample_pointcloud, parse_pointcloud, detect_format, export_to_pcd, export_to_ply, export_to_xyz};
 use crate::processing::{
     statistical_outlier_removal, 
     radius_outlier_removal, 
     passthrough_filter,
-    transform_pointcloud,
     voxel_downsample_parallel
 };
 use crate::AppState;
@@ -292,6 +291,66 @@ pub async fn delete_pointcloud(
             info!("Deleted point cloud: {}", id);
             HttpResponse::Ok()
                 .json(serde_json::json!({"message": "Point cloud deleted successfully"}))
+        }
+        None => {
+            HttpResponse::NotFound()
+                .json(serde_json::json!({"error": "Point cloud not found"}))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ExportQuery {
+    pub format: Option<String>,
+}
+
+pub async fn export_pointcloud(
+    data: web::Data<AppState>,
+    path: web::Path<String>,
+    query: web::Query<ExportQuery>,
+) -> impl Responder {
+    let id = path.into_inner();
+    let pointclouds = data.pointclouds.lock().unwrap();
+    
+    match pointclouds.get(&id) {
+        Some(pointcloud) => {
+            let format = query.format.as_deref().unwrap_or("pcd").to_lowercase();
+            
+            let result = match format.as_str() {
+                "pcd" => export_to_pcd(&pointcloud.points),
+                "ply" => export_to_ply(&pointcloud.points),
+                "xyz" => export_to_xyz(&pointcloud.points),
+                _ => {
+                    return HttpResponse::BadRequest()
+                        .json(serde_json::json!({"error": "Unsupported export format. Use 'pcd', 'ply', or 'xyz'."}));
+                }
+            };
+            
+            match result {
+                Ok(content) => {
+                    let filename = format!("{}_{}.{}", 
+                        pointcloud.name.replace(" ", "_"), 
+                        id.split('-').next().unwrap_or(&id),
+                        format
+                    );
+                    
+                    info!("Exporting point cloud {} as {}", id, format);
+                    
+                    HttpResponse::Ok()
+                        .content_type(match format.as_str() {
+                            "pcd" => "application/octet-stream",
+                            "ply" => "application/octet-stream",
+                            "xyz" => "text/plain",
+                            _ => "application/octet-stream",
+                        })
+                        .insert_header(("Content-Disposition", format!("attachment; filename=\"{}\"", filename)))
+                        .body(content)
+                }
+                Err(e) => {
+                    HttpResponse::InternalServerError()
+                        .json(serde_json::json!({"error": format!("Export failed: {}", e)}))
+                }
+            }
         }
         None => {
             HttpResponse::NotFound()
