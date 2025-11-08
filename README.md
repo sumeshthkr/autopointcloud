@@ -1,8 +1,8 @@
 # 🚀 AutoPointCloud
 
-**Professional Point Cloud Processing Web Application**
+**Professional Point Cloud & 3D Mesh Processing Web Application**
 
-A high-performance, web-based point cloud processing application built with Next.js and Three.js. Process millions of points with PCL-like functionality directly in your browser, optimized for deployment on Vercel and Netlify.
+A high-performance, web-based point cloud and 3D mesh processing application built with Next.js and Three.js. Process millions of points and render complex 3D meshes with PCL-like functionality directly in your browser, optimized for deployment on Vercel and Netlify.
 
 ![Version](https://img.shields.io/badge/Version-2.0.0-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-16.0-black)
@@ -14,15 +14,26 @@ A high-performance, web-based point cloud processing application built with Next
 - **Professional Design**: Clean, modern interface with gradient effects
 - **Responsive Layout**: Works seamlessly on desktop, tablet, and mobile
 - **Dark Mode Support**: Automatic dark mode based on system preferences
-- **Drag & Drop**: Intuitive file upload with drag-and-drop support
-- **Real-time Statistics**: Live FPS monitoring and point cloud metrics
+- **Drag & Drop**: Intuitive file upload with drag-and-drop support for point clouds and meshes
+- **Real-time Statistics**: Live FPS monitoring and data metrics (vertices, faces, format type)
+- **Smart UI**: Automatically adapts to show relevant options based on data type (point cloud vs mesh)
 
 ### 📤 File Format Support
+
+**Point Cloud Formats:**
 - **PCD (Point Cloud Data)**: ASCII format with full metadata support
-- **PLY (Polygon File Format)**: Standard format compatible with MeshLab, CloudCompare
+- **PLY (Polygon File Format)**: Vertices and faces with full metadata
 - **XYZ**: Simple text format for universal compatibility
+
+**3D Mesh Formats:**
+- **OBJ (Wavefront)**: Industry-standard 3D mesh format
+- **STL (STereoLithography)**: ASCII format for 3D printing and CAD
+- **PLY with Faces**: Triangle mesh support with color data
+
+**Features:**
 - **Auto-detection**: Automatically detects and parses file formats
-- **Large File Support**: Handles files with millions of points
+- **Large File Support**: Handles files with millions of points/vertices
+- **Mesh Rendering**: Full support for triangulated 3D meshes with proper lighting
 
 ### ⚡ High-Performance Processing
 All operations run client-side with optimized algorithms:
@@ -35,18 +46,31 @@ All operations run client-side with optimized algorithms:
 - **Distance Filtering**: Filter by distance from centroid
 
 ### 📦 Export Capabilities
+
+**Point Cloud Export:**
 - **PCD (Point Cloud Data)**: ASCII format with full metadata support
-- **PLY (Polygon File Format)**: Compatible with external tools
+- **PLY**: Vertices with optional color/intensity data
 - **XYZ**: Simple text format for universal compatibility
-- **Preserves Attributes**: Maintains intensity, RGB color, and spatial data
+
+**Mesh Export:**
+- **OBJ**: Vertices and faces with normals
+- **STL**: ASCII format with computed normals for 3D printing
+- **PLY with Faces**: Complete mesh geometry with triangle data
+
+**Features:**
+- **Smart Export**: Automatically shows relevant formats based on data type
+- **Preserves Attributes**: Maintains intensity, RGB color, normals, and spatial data
+- **Standard Compliance**: Compatible with MeshLab, CloudCompare, Blender, and other 3D tools
 
 ### 🎯 Interactive 3D Visualization
 - **High-Performance Rendering**: WebGL-powered Three.js renderer via React Three Fiber
+- **Dual Rendering Modes**: Point cloud visualization and solid mesh rendering
 - **Interactive Controls**: Orbit, pan, and zoom with smooth damping
 - **Height-Based Coloring**: Automatic gradient coloring for depth perception
 - **RGB/Intensity Support**: Display point clouds with color or intensity
+- **Mesh Lighting**: Realistic lighting and shading for 3D meshes with computed normals
 - **60 FPS Rendering**: Smooth visualization even with large datasets
-- **Auto-fit View**: Automatically frames the point cloud in view
+- **Auto-fit View**: Automatically frames the data in view
 
 ## 🛠️ Tech Stack
 
@@ -127,34 +151,46 @@ No environment variables required! The application runs entirely client-side.
 
 ## 🎯 Quick Start Guide
 
-### 1. Upload a Point Cloud
+### 1. Upload a Point Cloud or 3D Mesh
 
-- **Drag & Drop**: Drag a `.pcd`, `.ply`, or `.xyz` file onto the upload zone
+- **Drag & Drop**: Drag a `.pcd`, `.ply`, `.xyz`, `.obj`, or `.stl` file onto the upload zone
 - **Click to Upload**: Click the upload zone to browse and select a file
-- **Demo Files**: Use the demo files in `/public/demo_data/` directory
+- **Demo Files**: Use the demo files in `/demo_data/` directory
+  - Point clouds: `kitti_street_scene.pcd`, `demo_pointcloud.pcd`
+  - Meshes: `cube.obj`, `cube.stl`
 
 ### 2. View Your Data
 
-- The 3D viewer automatically displays your point cloud
+- The 3D viewer automatically displays your data
+- **Point clouds** are rendered as colored points
+- **Meshes** are rendered as solid surfaces with lighting
 - Use mouse controls:
   - **Left-click + drag**: Rotate view (orbit)
   - **Right-click + drag**: Pan view
   - **Scroll wheel**: Zoom in/out
 - Point clouds are colored by height (blue = low, red = high)
 - RGB and intensity data are automatically detected and displayed
+- Meshes show proper shading based on surface normals
 
 ### 3. Process Your Data
 
+- Processing operations work on point cloud data
 - Select a processing operation from the dropdown
 - Adjust parameters using the sliders
 - Click "Apply Processing" to execute
 - View results instantly in the 3D viewer
+- **Note**: Currently, processing operations are designed for point clouds
 
 ### 4. Export Results
 
-- Click one of the export buttons (PCD, PLY, XYZ)
+**For Point Clouds:**
+- Export as PCD, PLY, or XYZ format
+- All color and intensity data is preserved
+
+**For Meshes:**
+- Export as OBJ, STL, or PLY format
+- Geometry, normals, and faces are preserved
 - File downloads automatically to your computer
-- Processed data includes all transformations
 
 ## 📖 Processing Operations
 
@@ -226,23 +262,31 @@ autopointcloud/
 
 ## 🎨 Demo Datasets
 
-The `/public/demo_data/` directory contains example files:
+The `/demo_data/` directory contains example files:
 
-### KITTI Street Scene (5,000 points)
-**File:** `kitti_street_scene.pcd`
+### Point Clouds
 
-A synthetic street scene inspired by the KITTI autonomous driving dataset:
+**KITTI Street Scene (5,000 points)**
+- **File:** `kitti_street_scene.pcd`
+- A synthetic street scene inspired by the KITTI autonomous driving dataset
 - **Ground & Road**: 2,000 points
 - **Buildings**: 1,500 points (facades with windows)
 - **Vehicles**: 1,000 points (two cars)
 - **Vegetation**: 500 points (trees)
+- **Dimensions**: X: -20m to +20m, Y: -12m to +12m, Z: -0.2m to +6m
+- Perfect for testing downsampling, filtering, and visualization
 
-**Dimensions:**
-- X: -20m to +20m (40m width)
-- Y: -12m to +12m (24m depth)
-- Z: -0.2m to +6m (6.2m height)
+**Demo Point Cloud**
+- **File:** `demo_pointcloud.pcd`
+- Small sample point cloud for quick testing
 
-Perfect for testing downsampling, filtering, and visualization.
+### 3D Meshes
+
+**Cube Mesh**
+- **Files:** `cube.obj`, `cube.stl`
+- Simple cube geometry (8 vertices, 12 triangular faces)
+- Perfect for testing mesh rendering, export, and visualization
+- Demonstrates both OBJ and STL format support
 
 ## 📊 Performance
 
