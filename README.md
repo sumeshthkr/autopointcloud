@@ -12,13 +12,29 @@ A high-performance, web-based point cloud and 3D mesh processing application bui
 
 ## ✨ Features
 
-### 🎨 Modern UI
-- **Professional Design**: Clean, modern interface with gradient effects
-- **Responsive Layout**: Works seamlessly on desktop, tablet, and mobile
-- **Dark Mode Support**: Automatic dark mode based on system preferences
+### 🎨 Modern UI (NEW! v3.1)
+- **Unreal/Godot-Style Interface**: Professional 3-panel layout with collapsible sidebars
+- **Scene Outliner**: Left sidebar for managing multiple point clouds
+  - Hierarchical tree view of all loaded point clouds
+  - Quick visibility toggles, duplicate, and delete operations
+  - Select point clouds to view and edit
+- **Properties Panel**: Right sidebar for viewport and processing controls
+  - Collapsible sections for organized settings
+  - Real-time parameter adjustments
+  - Integrated export options
+- **Advanced Toolbar**: Top toolbar with quick access to all tools
+  - File operations (Save/Load project)
+  - Edit operations (Undo/Redo with Ctrl+Z/Y)
+  - View tools (Comparison, Screenshot)
+  - Measurement and annotation tools
+  - Animation controls
+- **Multi-Point Cloud Support**: Load and manage multiple point clouds simultaneously
+- **Bulk Upload**: Upload multiple files at once with progress tracking
+- **Side-by-Side Comparison**: Split-screen view with draggable divider
 - **Drag & Drop**: Intuitive file upload with drag-and-drop support for point clouds and meshes
-- **Real-time Statistics**: Live FPS monitoring and data metrics (vertices, faces, format type)
-- **Smart UI**: Automatically adapts to show relevant options based on data type (point cloud vs mesh)
+- **Keyboard Shortcuts**: Full keyboard support for power users (press H for help)
+- **Dark Theme**: Professional dark interface matching industry-standard 3D tools
+- **Responsive Layout**: All panels can be collapsed for maximum viewport space
 
 ### 📤 File Format Support
 
@@ -227,41 +243,93 @@ No environment variables required! The application runs entirely client-side.
 
 ## 🎯 Quick Start Guide
 
-### 1. Upload a Point Cloud or 3D Mesh
+### 1. Upload Point Clouds or 3D Meshes
 
-- **Drag & Drop**: Drag a `.pcd`, `.ply`, `.xyz`, `.obj`, or `.stl` file onto the upload zone
-- **Click to Upload**: Click the upload zone to browse and select a file
-- **Demo Files**: Use the demo files in `/demo_data/` directory
-  - Point clouds: `kitti_street_scene.pcd`, `demo_pointcloud.pcd`
-  - Meshes: `cube.obj`, `cube.stl`
+**Single File Upload:**
+- **Drag & Drop**: Drag a `.pcd`, `.ply`, `.xyz`, `.obj`, or `.stl` file onto the viewport
+- **Click "Add Point Cloud"**: Use the button in the left sidebar
+- **Keyboard Shortcut**: Press `Ctrl/Cmd + O` to open file dialog
 
-### 2. View Your Data
+**Bulk Upload (NEW!):**
+- Click "Bulk Upload" in the left sidebar
+- Select multiple files at once
+- Watch upload progress for each file
+- All files are added to the scene automatically
 
-- The 3D viewer automatically displays your data
-- **Point clouds** are rendered as colored points
-- **Meshes** are rendered as solid surfaces with lighting
-- Use mouse controls:
+**Demo Files**: Use the demo files in `/demo_data/` directory
+- Point clouds: `kitti_street_scene.pcd`, `demo_pointcloud.pcd`
+- Meshes: `cube.obj`, `cube.stl`
+
+### 2. Manage Your Scene
+
+- **Scene Outliner** (left sidebar) shows all loaded point clouds
+- Click on a point cloud to select it
+- **Eye icon**: Toggle visibility
+- **Copy icon**: Duplicate point cloud
+- **Trash icon**: Delete point cloud
+- **Multiple point clouds** can be loaded and managed simultaneously
+
+### 3. View and Navigate
+
+- The 3D viewer displays the selected point cloud
+- **Mouse Controls**:
   - **Left-click + drag**: Rotate view (orbit)
   - **Right-click + drag**: Pan view
+  - **Middle-click + drag**: Pan view (alternative)
   - **Scroll wheel**: Zoom in/out
-- Point clouds are colored by height (blue = low, red = high)
-- RGB and intensity data are automatically detected and displayed
-- Meshes show proper shading based on surface normals
+  - **Double-click**: Focus on point
+- **Viewport Settings** (right sidebar - Properties panel):
+  - Adjust point size (1-10)
+  - Change background color
+  - Toggle grid display (or press `G`)
+  - Toggle axes display (or press `A`)
 
-### 3. Process Your Data
+### 4. Process Your Data
 
-- Processing operations work on point cloud data
-- Select a processing operation from the dropdown
-- Adjust parameters using the sliders
+- **Properties Panel** (right sidebar) contains all processing controls
+- Select an operation from the Processing section
+- Adjust parameters with sliders
 - Click "Apply Processing" to execute
+- **Undo/Redo** buttons in toolbar (`Ctrl+Z` / `Ctrl+Y`)
 - View results instantly in the 3D viewer
-- **Note**: Currently, processing operations are designed for point clouds
 
-### 4. Export Results
+### 5. Compare Point Clouds
 
-**For Point Clouds:**
-- Export as PCD, PLY, or XYZ format
+- Click the **Comparison icon** in toolbar
+- Drag the divider to adjust split position
+- Perfect for before/after comparisons
+- Shows statistics for both point clouds
+
+### 6. Export Results
+
+- **Properties Panel** → Export section
+- Choose format based on your data type
+- **For Point Clouds**: PCD, PLY, or XYZ format
+- **For Meshes**: OBJ, STL, or PLY format
 - All color and intensity data is preserved
+
+### 7. Save Your Work
+
+- **Save Project** (`Ctrl/Cmd + S`): Exports project metadata as JSON
+- **Camera Bookmarks**: Save favorite viewing angles
+- **Screenshot**: Capture current viewport
+- **Animation**: Toggle turntable mode with toolbar or `Space` key
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl/Cmd + Z` | Undo last operation |
+| `Ctrl/Cmd + Y` | Redo operation |
+| `Ctrl/Cmd + S` | Save project |
+| `Ctrl/Cmd + O` | Open file |
+| `Delete` | Delete selected point cloud |
+| `Space` | Toggle turntable animation |
+| `G` | Toggle grid display |
+| `A` | Toggle axes display |
+| `H` | Show help dialog |
+
+*Press `H` at any time to see the full keyboard shortcuts reference.*
 
 **For Meshes:**
 - Export as OBJ, STL, or PLY format
@@ -429,7 +497,7 @@ See [FEATURES.md](FEATURES.md) for complete feature documentation and API refere
 
 ## 🔮 Roadmap
 
-### ✅ v3.0 (Current - Completed Features)
+### ✅ v3.0 (Completed Features)
 - [x] Normal estimation with PCA
 - [x] RANSAC-based plane segmentation
 - [x] Euclidean clustering
@@ -453,13 +521,32 @@ See [FEATURES.md](FEATURES.md) for complete feature documentation and API refere
 - [x] Supervoxel clustering
 - [x] Min-cut segmentation
 
-### v3.1 (Next Release)
+### ✅ v3.1 (Current - Just Released! 🎉)
+**UI/UX Enhancements:**
+- [x] **Unreal/Godot-style interface** with 3-panel layout
+- [x] **Scene Outliner** - Manage multiple point clouds
+- [x] **Properties Panel** - Integrated viewport and processing controls
+- [x] **Advanced Toolbar** - Quick access to all tools
+- [x] **Bulk Upload** - Upload multiple files simultaneously
+- [x] **Side-by-Side Comparison** - Split-screen view with draggable divider
+- [x] **Undo/Redo System** - Full operation history
+- [x] **Keyboard Shortcuts** - Complete keyboard support
+- [x] **Camera Bookmarks** - Save favorite viewing angles
+- [x] **Turntable Animation** - Automated rotation mode
+- [x] **Grid & Axes Toggle** - Customizable viewport overlays
+- [x] **Background Color Picker** - Personalize your workspace
+- [x] **Point Size Control** - Adjustable point rendering size
+- [x] **Project Save/Load** - Export project metadata
+- [x] **Help System** - Built-in shortcuts and quick start guide
+
+### v3.2 (Next Release)
 - [ ] LAS/LAZ binary format support
 - [ ] Web Workers for parallel processing
-- [ ] Multiple point clouds in single view
-- [ ] Screenshot/image export
-- [ ] Interactive measurement tools
-- [ ] Annotation system
+- [ ] Screenshot/image export (canvas capture)
+- [ ] Interactive measurement tools (implementation)
+- [ ] Annotation system (implementation)
+- [ ] Camera bookmark restoration
+- [ ] Project file loading (full implementation)
 
 ### v3.2 (Future)
 - [ ] Poisson surface reconstruction
