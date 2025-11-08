@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
-import { Upload, Download, Cpu, Cloud, Info } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Upload, Cloud, Info } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PointCloud, ProcessingOptions } from '@/lib/types'
 import { PointCloudParser } from '@/lib/parser'
 import { PointCloudProcessor } from '@/lib/processing'
 import { formatBytes, formatNumber } from '@/lib/utils'
+import MenuBar from '@/components/MenuBar'
 
 const PointCloudViewer = dynamic(() => import('@/components/PointCloudViewer'), {
   ssr: false,
@@ -22,12 +22,14 @@ const PointCloudViewer = dynamic(() => import('@/components/PointCloudViewer'), 
 export default function Home() {
   const [pointCloud, setPointCloud] = useState<PointCloud | null>(null)
   const [isUploading, setIsUploading] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showInfoPanel, setShowInfoPanel] = useState(true)
   
   const [filterType, setFilterType] = useState<ProcessingOptions['filterType']>('downsample')
   const [voxelSize, setVoxelSize] = useState(0.1)
   const [threshold, setThreshold] = useState(2.0)
+  
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -50,7 +52,6 @@ export default function Home() {
   const handleProcess = useCallback(async () => {
     if (!pointCloud) return
     
-    setIsProcessing(true)
     setError(null)
     
     try {
@@ -65,8 +66,6 @@ export default function Home() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Processing failed')
       console.error('Processing error:', err)
-    } finally {
-      setIsProcessing(false)
     }
   }, [pointCloud, filterType, voxelSize, threshold])
   
@@ -108,94 +107,81 @@ export default function Home() {
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
   }, [])
+  
+  const triggerFileUpload = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
-      {/* Header */}
-      <header className="border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 flex flex-col">
+      {/* Header with Title and Logo */}
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+        <div className="px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-400 rounded-lg flex items-center justify-center">
-              <Cloud className="w-6 h-6 text-white" />
+            <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-400 rounded-lg flex items-center justify-center">
+              <Cloud className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
                 AutoPointCloud
               </h1>
-              <p className="text-xs text-slate-500">Professional Point Cloud Processing</p>
+              <p className="text-[10px] text-slate-500">Professional Point Cloud Processing</p>
             </div>
           </div>
           <div className="text-sm text-slate-500">
             {pointCloud && (
               <span className="font-mono">
-                {formatNumber(pointCloud.numPoints)} points
+                {formatNumber(pointCloud.numPoints)} {pointCloud.isMesh ? 'vertices' : 'points'}
+                {pointCloud.isMesh && pointCloud.numFaces && ` | ${formatNumber(pointCloud.numFaces)} faces`}
               </span>
             )}
           </div>
         </div>
+        
+        {/* Menu Bar */}
+        <MenuBar
+          onFileUpload={triggerFileUpload}
+          onExport={handleExport}
+          onProcess={handleProcess}
+          hasPointCloud={!!pointCloud}
+          isMesh={pointCloud?.isMesh || false}
+          filterType={filterType}
+          onFilterTypeChange={setFilterType}
+          voxelSize={voxelSize}
+          onVoxelSizeChange={setVoxelSize}
+          threshold={threshold}
+          onThresholdChange={setThreshold}
+          onToggleStats={() => setShowInfoPanel(!showInfoPanel)}
+        />
       </header>
 
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
-          {/* Left Panel - Controls */}
-          <div className="lg:col-span-1 space-y-4 overflow-y-auto">
-            {/* Upload Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Upload className="w-5 h-5" />
-                  Upload Point Cloud
-                </CardTitle>
-                <CardDescription>
-                  Supports PCD, PLY, XYZ, OBJ, STL formats
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
-                >
-                  <input
-                    type="file"
-                    accept=".pcd,.ply,.xyz,.txt,.obj,.stl"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="file-upload"
-                    disabled={isUploading}
-                  />
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    <Cloud className="w-12 h-12 mx-auto mb-4 text-slate-400" />
-                    <p className="text-sm font-medium mb-1">
-                      {isUploading ? 'Uploading...' : 'Drop file or click to upload'}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      PCD, PLY, XYZ, OBJ, STL (max 100MB)
-                    </p>
-                  </label>
-                </div>
-                
-                {error && (
-                  <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
-                    {error}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Point Cloud Info */}
-            {pointCloud && (
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pcd,.ply,.xyz,.txt,.obj,.stl"
+        onChange={handleFileUpload}
+        className="hidden"
+        disabled={isUploading}
+      />
+      
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Info Panel - Collapsible */}
+        {showInfoPanel && pointCloud && (
+          <div className="w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 overflow-y-auto">
+            <div className="p-4 space-y-4">
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Info className="w-5 h-5" />
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Info className="w-4 h-4" />
                     {pointCloud.isMesh ? '3D Mesh Info' : 'Point Cloud Info'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Name:</span>
-                    <span className="font-medium">{pointCloud.name}</span>
+                    <span className="font-medium truncate ml-2" title={pointCloud.name}>{pointCloud.name}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Type:</span>
@@ -236,138 +222,60 @@ export default function Home() {
                   </div>
                 </CardContent>
               </Card>
-            )}
-
-            {/* Processing Card */}
-            {pointCloud && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Cpu className="w-5 h-5" />
-                    Processing
-                  </CardTitle>
-                  <CardDescription>
-                    Apply filters to your point cloud
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Filter Type</label>
-                    <select
-                      value={filterType}
-                      onChange={(e) => setFilterType(e.target.value as ProcessingOptions['filterType'])}
-                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800"
-                    >
-                      <option value="downsample">Voxel Downsampling</option>
-                      <option value="statistical_outlier">Statistical Outlier Removal</option>
-                      <option value="radius_outlier">Radius Outlier Removal</option>
-                      <option value="intensity">Intensity Filter</option>
-                      <option value="distance">Distance Filter</option>
-                      <option value="passthrough_x">PassThrough X</option>
-                      <option value="passthrough_y">PassThrough Y</option>
-                      <option value="passthrough_z">PassThrough Z</option>
-                    </select>
-                  </div>
-                  
-                  {filterType === 'downsample' && (
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">
-                        Voxel Size: {voxelSize}
-                      </label>
-                      <input
-                        type="range"
-                        min="0.01"
-                        max="1"
-                        step="0.01"
-                        value={voxelSize}
-                        onChange={(e) => setVoxelSize(parseFloat(e.target.value))}
-                        className="w-full"
-                      />
-                    </div>
-                  )}
-                  
-                  {filterType !== 'downsample' && (
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">
-                        Threshold: {threshold}
-                      </label>
-                      <input
-                        type="range"
-                        min="0.1"
-                        max="10"
-                        step="0.1"
-                        value={threshold}
-                        onChange={(e) => setThreshold(parseFloat(e.target.value))}
-                        className="w-full"
-                      />
-                    </div>
-                  )}
-                  
-                  <Button
-                    onClick={handleProcess}
-                    disabled={isProcessing}
-                    className="w-full"
-                  >
-                    {isProcessing ? 'Processing...' : 'Apply Processing'}
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Export Card */}
-            {pointCloud && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Download className="w-5 h-5" />
-                    Export
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => handleExport('ply')} className="flex-1">
-                      PLY
-                    </Button>
-                    {!pointCloud.isMesh && (
-                      <>
-                        <Button variant="outline" onClick={() => handleExport('pcd')} className="flex-1">
-                          PCD
-                        </Button>
-                        <Button variant="outline" onClick={() => handleExport('xyz')} className="flex-1">
-                          XYZ
-                        </Button>
-                      </>
-                    )}
-                    {pointCloud.isMesh && (
-                      <>
-                        <Button variant="outline" onClick={() => handleExport('obj')} className="flex-1">
-                          OBJ
-                        </Button>
-                        <Button variant="outline" onClick={() => handleExport('stl')} className="flex-1">
-                          STL
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            </div>
           </div>
+        )}
 
-          {/* Right Panel - 3D Viewer */}
-          <div className="lg:col-span-2">
-            <Card className="h-full">
-              <CardContent className="p-0 h-full">
-                <PointCloudViewer
-                  points={pointCloud?.points || []}
-                  hasColor={pointCloud?.hasColor || false}
-                  hasIntensity={pointCloud?.hasIntensity || false}
-                  faces={pointCloud?.faces}
-                  isMesh={pointCloud?.isMesh || false}
-                />
-              </CardContent>
-            </Card>
-          </div>
+        {/* Main Viewer Area */}
+        <div className="flex-1 flex flex-col relative">
+          {!pointCloud ? (
+            <div 
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              className="flex-1 flex items-center justify-center p-8"
+            >
+              <div className="text-center max-w-md">
+                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-400 rounded-2xl flex items-center justify-center shadow-lg">
+                  <Cloud className="w-12 h-12 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold mb-2">Welcome to AutoPointCloud</h2>
+                <p className="text-slate-500 mb-6">
+                  Professional point cloud and 3D mesh processing in your browser
+                </p>
+                <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-8 hover:border-blue-400 transition-colors cursor-pointer">
+                  <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+                  <p className="text-sm font-medium mb-1">
+                    {isUploading ? 'Uploading...' : 'Drop file here or use File > Open to upload'}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Supports PCD, PLY, XYZ, OBJ, STL formats (max 100MB)
+                  </p>
+                </div>
+                
+                {error && (
+                  <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
+                    {error}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 relative bg-slate-900">
+              <PointCloudViewer
+                points={pointCloud?.points || []}
+                hasColor={pointCloud?.hasColor || false}
+                hasIntensity={pointCloud?.hasIntensity || false}
+                faces={pointCloud?.faces}
+                isMesh={pointCloud?.isMesh || false}
+              />
+              
+              {error && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 max-w-md p-3 bg-red-50 dark:bg-red-900/90 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400 shadow-lg">
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
