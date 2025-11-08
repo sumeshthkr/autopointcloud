@@ -176,7 +176,23 @@ npm start
 
 ## 🚀 Deployment
 
-### Deploy to Vercel (Recommended)
+### Deploy to GitHub Pages (NEW! ⭐)
+
+This is the easiest deployment option - completely free and automatic!
+
+**Live Demo**: [https://sumeshthkr.github.io/autopointcloud/](https://sumeshthkr.github.io/autopointcloud/)
+
+The application automatically deploys to GitHub Pages on every push to the main branch:
+
+1. Fork or clone this repository
+2. Go to your repository Settings → Pages
+3. Under "Build and deployment", select "GitHub Actions" as the source
+4. Push to the main branch - GitHub Actions will automatically build and deploy
+5. Your site will be available at `https://[username].github.io/autopointcloud/`
+
+**That's it!** No configuration needed - the GitHub Actions workflow handles everything.
+
+### Deploy to Vercel
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/sumeshthkr/autopointcloud)
 
@@ -197,7 +213,7 @@ vercel
 1. Push your code to GitHub
 2. Connect repository in Netlify
 3. Build command: `npm run build`
-4. Publish directory: `.next`
+4. Publish directory: `out`
 
 Or via CLI:
 ```bash
