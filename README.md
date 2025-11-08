@@ -8,6 +8,54 @@ A high-performance, web-based point cloud processing application built with Rust
 ![Rust](https://img.shields.io/badge/Rust-1.70+-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
+## 📸 Screenshots & Demo
+
+### Professional Glass Morphism Interface
+![AutoPointCloud Interface](https://github.com/user-attachments/assets/829153b8-d60a-44c7-8e84-663b9f6a1813)
+
+The application features a modern, professional interface with:
+- **Drag-and-drop upload zone** for easy file import
+- **Real-time point cloud list** showing all loaded datasets
+- **Processing controls** with multiple filter options
+- **Live statistics** including point count, file size, and FPS
+- **3D viewer** with interactive controls
+
+### Working with KITTI-Style Datasets
+
+The application has been tested with KITTI-style point cloud data and other real-world datasets. Demo files are included in the `demo_data/` directory:
+
+#### Example: Street Scene Processing (5,000 points)
+```bash
+# Upload a KITTI-style street scene
+curl -X POST http://127.0.0.1:8080/api/upload \
+  -F "file=@demo_data/kitti_street_scene.pcd"
+
+# Response:
+{
+  "id": "5fa3a8e4-be2a-490e-9197-375b074d2ddd",
+  "name": "PointCloud 5fa3a8e4 (PCD)",
+  "format": "PCD",
+  "points_parsed": 5000
+}
+
+# Apply voxel downsampling (0.3m voxel size)
+curl -X POST http://127.0.0.1:8080/api/pointclouds/{id}/process \
+  -H "Content-Type: application/json" \
+  -d '{"filter_type": "downsample", "voxel_size": 0.3}'
+
+# Result: 5,000 → 4,025 points (19.5% reduction)
+
+# Export processed cloud to PLY format
+curl "http://127.0.0.1:8080/api/pointclouds/{id}/export?format=ply" \
+  -o output.ply
+```
+
+The KITTI-style demo scene includes:
+- **Ground and road surface** (2,000 points) - Brown terrain with dark gray road
+- **Building facades** (1,500 points) - Walls and windows with realistic colors
+- **Vehicles** (1,000 points) - Two cars with different colors (red and blue)
+- **Vegetation** (500 points) - Trees with green foliage
+
 ## ✨ Features
 
 ### 🎨 Professional Glass Morphism UI
@@ -34,6 +82,15 @@ All operations use parallel processing with Rayon for maximum performance:
 - **Distance Filtering**: Filter by distance from centroid
 - **Transform Operations**: Translate, rotate, and scale (ready for use)
 - **Normal Estimation**: Compute surface normals (ready for use)
+
+### 📦 Export Capabilities
+Export your processed point clouds to multiple formats:
+
+- **PCD (Point Cloud Data)**: ASCII format with full metadata support
+- **PLY (Polygon File Format)**: Standard format compatible with MeshLab, CloudCompare
+- **XYZ**: Simple text format for universal compatibility
+- **Preserves Attributes**: Maintains intensity, RGB color, and spatial data
+- **One-Click Export**: Simple API endpoint for instant downloads
 
 ### 🎯 Interactive 3D Visualization
 - **High-Performance Rendering**: WebGL-powered Three.js renderer
@@ -169,6 +226,32 @@ Response:
 }
 ```
 
+#### Export Point Cloud
+```http
+GET /api/pointclouds/{id}/export?format={pcd|ply|xyz}
+
+Response: File download
+Content-Type: application/octet-stream (for pcd/ply) or text/plain (for xyz)
+Content-Disposition: attachment; filename="PointCloud_xyz_abc123.pcd"
+```
+
+**Supported Export Formats:**
+- `pcd` - Point Cloud Data (ASCII format with full metadata)
+- `ply` - Polygon File Format (compatible with MeshLab, CloudCompare)
+- `xyz` - Simple XYZ text format (universal compatibility)
+
+**Example:**
+```bash
+# Export as PCD
+curl "http://127.0.0.1:8080/api/pointclouds/{id}/export?format=pcd" -o output.pcd
+
+# Export as PLY
+curl "http://127.0.0.1:8080/api/pointclouds/{id}/export?format=ply" -o output.ply
+
+# Export as XYZ (default format if not specified)
+curl "http://127.0.0.1:8080/api/pointclouds/{id}/export?format=xyz" -o output.xyz
+```
+
 ### Processing Operations
 
 | Operation | Parameters | Description |
@@ -193,8 +276,52 @@ autopointcloud/
 │   ├── app.html          # Main Glass UI interface
 │   ├── app.js            # Frontend application logic
 │   └── index.html        # Legacy interface
+├── demo_data/            # Example point cloud datasets
+│   ├── kitti_street_scene.pcd  # 5,000 point KITTI-style urban scene
+│   └── demo_pointcloud.pcd     # 1,000 point demonstration cloud
+├── test_data/            # Test files for validation
+│   ├── sample.pcd        # Small PCD test file
+│   └── sample.xyz        # Small XYZ test file
 ├── Cargo.toml            # Rust dependencies
 └── README.md             # This file
+```
+
+## 📊 Demo Datasets
+
+The `demo_data/` directory contains realistic point cloud examples:
+
+### KITTI Street Scene (5,000 points)
+**File:** `kitti_street_scene.pcd`
+
+A synthetic street scene inspired by the KITTI autonomous driving dataset, featuring:
+- **Ground & Road**: 2,000 points of terrain and road surface
+- **Buildings**: 1,500 points of building facades with windows
+- **Vehicles**: 1,000 points forming two cars (red and blue)
+- **Vegetation**: 500 points of trees and foliage
+
+**Scene Dimensions:**
+- X: -20m to +20m (40m width)
+- Y: -12m to +12m (24m depth)
+- Z: -0.2m to +6m (6.2m height)
+
+This dataset is perfect for testing:
+- Voxel downsampling algorithms
+- Distance-based filtering
+- PassThrough filtering for ground removal
+- Statistical outlier removal
+- Export functionality
+
+### Quick Demo Usage
+```bash
+# Start the server
+cargo run --release
+
+# Upload the KITTI scene
+curl -X POST http://127.0.0.1:8080/api/upload \
+  -F "file=@demo_data/kitti_street_scene.pcd"
+
+# View in browser
+open http://127.0.0.1:8080
 ```
 
 ## 🎯 Performance
@@ -206,12 +333,24 @@ autopointcloud/
 
 ## 🔮 Roadmap
 
+### Recently Completed ✅
+- [x] **Point cloud export to multiple formats** (v0.1.0)
+  - PCD ASCII format with full metadata
+  - PLY format for MeshLab/CloudCompare compatibility
+  - XYZ simple text format for universal use
+  - Preserves intensity and RGB color data
+- [x] **KITTI-style dataset support** (v0.1.0)
+  - Tested with realistic street scene data
+  - Demo datasets included in `demo_data/`
+  - Full workflow documentation with examples
+
 ### Near-term
 - [ ] LAS/LAZ binary format support
 - [ ] E57 format support
-- [ ] Point cloud export to multiple formats
 - [ ] Persistent storage (database)
 - [ ] WebSocket for real-time updates
+- [ ] Batch processing API
+- [ ] Point cloud merge/concatenation
 
 ### Mid-term
 - [ ] RANSAC-based plane segmentation
@@ -219,13 +358,17 @@ autopointcloud/
 - [ ] ICP registration
 - [ ] Feature extraction (FPFH, PFH)
 - [ ] LOD (Level of Detail) for massive datasets
+- [ ] Normal estimation visualization
+- [ ] Multi-cloud comparison view
 
 ### Long-term
 - [ ] Multi-user support with authentication
-- [ ] Cloud storage integration
+- [ ] Cloud storage integration (S3, Azure, GCP)
 - [ ] Batch processing pipeline
 - [ ] Machine learning-based classification
 - [ ] Plugin system for custom algorithms
+- [ ] Real-time collaborative editing
+- [ ] GPU-accelerated processing (CUDA)
 
 ## 🤝 Contributing
 
