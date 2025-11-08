@@ -4,6 +4,12 @@ export interface Point3D {
   z: number
   intensity?: number
   color?: [number, number, number]
+  normal?: [number, number, number]
+}
+
+export interface Face {
+  vertices: [number, number, number] // indices into the vertices array
+  normal?: [number, number, number]
 }
 
 export interface BoundingBox {
@@ -20,10 +26,14 @@ export interface PointCloud {
   numPoints: number
   boundingBox: BoundingBox
   fileSize: number
-  format: 'PCD' | 'PLY' | 'XYZ' | 'LAS' | 'LAZ'
+  format: 'PCD' | 'PLY' | 'XYZ' | 'LAS' | 'LAZ' | 'OBJ' | 'STL'
   createdAt: Date
   hasColor: boolean
   hasIntensity: boolean
+  // Mesh-specific properties
+  faces?: Face[]
+  numFaces?: number
+  isMesh: boolean
 }
 
 export interface ProcessingOptions {

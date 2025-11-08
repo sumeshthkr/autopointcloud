@@ -258,7 +258,7 @@ export class PointCloudProcessor {
     }
   }
 
-  static exportToFormat(pointCloud: PointCloud, format: 'pcd' | 'ply' | 'xyz'): string {
+  static exportToFormat(pointCloud: PointCloud, format: 'pcd' | 'ply' | 'xyz' | 'obj' | 'stl'): string {
     switch (format) {
       case 'pcd':
         return this.exportToPCD(pointCloud)
@@ -266,6 +266,10 @@ export class PointCloudProcessor {
         return this.exportToPLY(pointCloud)
       case 'xyz':
         return this.exportToXYZ(pointCloud)
+      case 'obj':
+        return this.exportToOBJ(pointCloud)
+      case 'stl':
+        return this.exportToSTL(pointCloud)
       default:
         throw new Error(`Unsupported export format: ${format}`)
     }
@@ -278,7 +282,7 @@ export class PointCloudProcessor {
     if (hasIntensity) fields += ' intensity'
     if (hasColor) fields += ' rgb'
     
-    let header = `# .PCD v0.7 - Point Cloud Data file format
+    const header = `# .PCD v0.7 - Point Cloud Data file format
 VERSION 0.7
 FIELDS ${fields}
 SIZE 4 4 4${hasIntensity ? ' 4' : ''}${hasColor ? ' 4' : ''}
@@ -304,18 +308,20 @@ DATA ascii\n`
   }
 
   private static exportToPLY(pointCloud: PointCloud): string {
-    const { points, hasColor, hasIntensity } = pointCloud
+    const { points, hasColor, hasIntensity, faces, isMesh } = pointCloud
     
     let properties = 'property float x\nproperty float y\nproperty float z\n'
     if (hasIntensity) properties += 'property float intensity\n'
     if (hasColor) properties += 'property uchar red\nproperty uchar green\nproperty uchar blue\n'
     
-    let header = `ply
+    const faceSection = isMesh && faces ? `element face ${faces.length}\nproperty list uchar int vertex_indices\n` : ''
+    
+    const header = `ply
 format ascii 1.0
 element vertex ${points.length}
-${properties}end_header\n`
+${properties}${faceSection}end_header\n`
     
-    const data = points.map(p => {
+    const vertexData = points.map(p => {
       let line = `${p.x} ${p.y} ${p.z}`
       if (hasIntensity) line += ` ${p.intensity ?? 0}`
       if (hasColor && p.color) {
@@ -324,7 +330,12 @@ ${properties}end_header\n`
       return line
     }).join('\n')
     
-    return header + data
+    let faceData = ''
+    if (isMesh && faces) {
+      faceData = '\n' + faces.map(f => `3 ${f.vertices[0]} ${f.vertices[1]} ${f.vertices[2]}`).join('\n')
+    }
+    
+    return header + vertexData + faceData
   }
 
   private static exportToXYZ(pointCloud: PointCloud): string {
@@ -338,5 +349,94 @@ ${properties}end_header\n`
       }
       return line
     }).join('\n')
+  }
+
+  private static exportToOBJ(pointCloud: PointCloud): string {
+    const { points, faces, isMesh } = pointCloud
+    
+    let output = '# Wavefront OBJ file exported from AutoPointCloud\n'
+    output += `# Vertices: ${points.length}\n`
+    if (isMesh && faces) {
+      output += `# Faces: ${faces.length}\n`
+    }
+    output += '\n'
+    
+    // Export vertices
+    for (const p of points) {
+      output += `v ${p.x} ${p.y} ${p.z}\n`
+    }
+    
+    // Export normals if available
+    const hasNormals = points.some(p => p.normal)
+    if (hasNormals) {
+      output += '\n'
+      for (const p of points) {
+        if (p.normal) {
+          output += `vn ${p.normal[0]} ${p.normal[1]} ${p.normal[2]}\n`
+        }
+      }
+    }
+    
+    // Export faces if this is a mesh
+    if (isMesh && faces) {
+      output += '\n'
+      for (const f of faces) {
+        // OBJ uses 1-based indexing
+        output += `f ${f.vertices[0] + 1} ${f.vertices[1] + 1} ${f.vertices[2] + 1}\n`
+      }
+    }
+    
+    return output
+  }
+
+  private static exportToSTL(pointCloud: PointCloud): string {
+    const { points, faces, isMesh } = pointCloud
+    
+    if (!isMesh || !faces || faces.length === 0) {
+      throw new Error('STL export requires mesh data with faces')
+    }
+    
+    let output = 'solid AutoPointCloud\n'
+    
+    for (const face of faces) {
+      const v0 = points[face.vertices[0]]
+      const v1 = points[face.vertices[1]]
+      const v2 = points[face.vertices[2]]
+      
+      // Calculate face normal
+      const u = {
+        x: v1.x - v0.x,
+        y: v1.y - v0.y,
+        z: v1.z - v0.z
+      }
+      const v = {
+        x: v2.x - v0.x,
+        y: v2.y - v0.y,
+        z: v2.z - v0.z
+      }
+      const normal = {
+        x: u.y * v.z - u.z * v.y,
+        y: u.z * v.x - u.x * v.z,
+        z: u.x * v.y - u.y * v.x
+      }
+      const len = Math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z)
+      if (len > 0) {
+        normal.x /= len
+        normal.y /= len
+        normal.z /= len
+      }
+      
+      output += `  facet normal ${normal.x} ${normal.y} ${normal.z}\n`
+      output += '    outer loop\n'
+      output += `      vertex ${v0.x} ${v0.y} ${v0.z}\n`
+      output += `      vertex ${v1.x} ${v1.y} ${v1.z}\n`
+      output += `      vertex ${v2.x} ${v2.y} ${v2.z}\n`
+      output += '    endloop\n'
+      output += '  endfacet\n'
+    }
+    
+    output += 'endsolid AutoPointCloud\n'
+    
+    return output
   }
 }
