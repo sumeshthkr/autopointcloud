@@ -64,6 +64,14 @@ export default function Home() {
   const [showGrid, setShowGrid] = useState(true)
   const [showAxes, setShowAxes] = useState(true)
   
+  // New plas.io-inspired viewport states
+  const [cameraMode, setCameraMode] = useState<'perspective' | 'orthographic' | 'top'>('perspective')
+  const [fov, setFov] = useState(75)
+  const [pointDensity, setPointDensity] = useState(100)
+  const [colorMode, setColorMode] = useState<'height' | 'intensity' | 'rgb' | 'classification'>('height')
+  const [intensityRange, setIntensityRange] = useState<[number, number]>([0, 1])
+  const [zExaggeration, setZExaggeration] = useState(1.0)
+  
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Save to history
@@ -457,6 +465,15 @@ export default function Home() {
                       hasIntensity={pc.pointCloud.hasIntensity}
                       faces={pc.pointCloud.faces}
                       isMesh={pc.pointCloud.isMesh}
+                      cameraMode={cameraMode}
+                      fov={fov}
+                      pointDensity={pointDensity}
+                      colorMode={colorMode}
+                      intensityRange={intensityRange}
+                      zExaggeration={zExaggeration}
+                      pointSize={pointSize}
+                      showGrid={showGrid}
+                      showAxes={showAxes}
                     />
                   )
                 ))}
@@ -509,6 +526,18 @@ export default function Home() {
           onToggleGrid={() => setShowGrid(!showGrid)}
           showAxes={showAxes}
           onToggleAxes={() => setShowAxes(!showAxes)}
+          cameraMode={cameraMode}
+          onCameraModeChange={setCameraMode}
+          fov={fov}
+          onFovChange={setFov}
+          pointDensity={pointDensity}
+          onPointDensityChange={setPointDensity}
+          colorMode={colorMode}
+          onColorModeChange={setColorMode}
+          intensityRange={intensityRange}
+          onIntensityRangeChange={setIntensityRange}
+          zExaggeration={zExaggeration}
+          onZExaggerationChange={setZExaggeration}
         />
       </div>
 
