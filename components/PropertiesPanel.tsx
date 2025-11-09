@@ -79,10 +79,12 @@ export default function PropertiesPanel({
     { value: 'passthrough_z', label: 'PassThrough Z' },
     { value: 'intensity', label: 'Intensity Filter' },
     { value: 'distance', label: 'Distance Filter' },
+    { value: 'mesh_to_pointcloud', label: 'Mesh → Point Cloud', disabled: !isMesh },
+    { value: 'pointcloud_to_mesh', label: 'Point Cloud → Mesh', disabled: isMesh },
   ]
 
   return (
-    <div className={`bg-slate-900 border-l border-slate-700 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-12' : 'w-80'}`}>
+    <div className={`bg-slate-900 border-l border-slate-700 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-12' : 'w-80 md:w-80 w-64'}`}>
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-slate-700">
         {!isCollapsed && (
@@ -210,7 +212,9 @@ export default function PropertiesPanel({
                       className="w-full px-2 py-1.5 text-xs bg-slate-800 text-slate-200 border border-slate-700 rounded focus:outline-none focus:border-blue-500"
                     >
                       {processingOptions.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        <option key={opt.value} value={opt.value} disabled={'disabled' in opt && opt.disabled}>
+                          {opt.label}
+                        </option>
                       ))}
                     </select>
                   </div>

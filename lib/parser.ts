@@ -26,79 +26,124 @@ export class PointCloudParser {
   }
 
   private static async parsePCD(file: File): Promise<PointCloud> {
-    const text = await file.text()
-    const lines = text.split('\n')
-    
-    let dataStart = 0
-    let hasColor = false
-    let hasIntensity = false
-    let fields: string[] = []
-    let isBinary = false
-    
-    // Parse header
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim()
+    try {
+      const text = await file.text()
+      const lines = text.split('\n')
       
-      if (line.startsWith('FIELDS')) {
-        fields = line.split(' ').slice(1)
-        hasColor = fields.includes('rgb') || (fields.includes('r') && fields.includes('g') && fields.includes('b'))
-        hasIntensity = fields.includes('intensity')
-      } else if (line.startsWith('DATA')) {
-        isBinary = line.split(' ')[1] === 'binary'
-        dataStart = i + 1
-        break
-      }
-    }
-    
-    if (isBinary) {
-      throw new Error('Binary PCD format is not yet supported. Please use ASCII PCD format.')
-    }
-    
-    // Parse points
-    const points: Point3D[] = []
-    for (let i = dataStart; i < lines.length; i++) {
-      const line = lines[i].trim()
-      if (!line) continue
+      let dataStart = 0
+      let hasColor = false
+      let hasIntensity = false
+      let fields: string[] = []
+      let isBinary = false
+      let skippedLines = 0
       
-      const values = line.split(/\s+/).map(parseFloat)
-      if (values.length < 3) continue
-      
-      const point: Point3D = {
-        x: values[0],
-        y: values[1],
-        z: values[2],
-      }
-      
-      // Handle intensity
-      if (hasIntensity) {
-        const intensityIdx = fields.indexOf('intensity')
-        if (intensityIdx >= 0 && values[intensityIdx] !== undefined) {
-          point.intensity = values[intensityIdx]
+      // Parse header with error recovery
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim()
+        
+        if (line.startsWith('FIELDS')) {
+          fields = line.split(' ').slice(1).filter(f => f.length > 0)
+          hasColor = fields.includes('rgb') || (fields.includes('r') && fields.includes('g') && fields.includes('b'))
+          hasIntensity = fields.includes('intensity')
+        } else if (line.startsWith('DATA')) {
+          const dataParts = line.split(' ')
+          isBinary = dataParts.length > 1 && dataParts[1] === 'binary'
+          dataStart = i + 1
+          break
         }
       }
       
-      // Handle RGB color
-      if (hasColor) {
-        if (fields.includes('rgb')) {
-          const rgbIdx = fields.indexOf('rgb')
-          const rgb = values[rgbIdx]
-          point.color = this.unpackRGB(rgb)
-        } else if (fields.includes('r') && fields.includes('g') && fields.includes('b')) {
-          const rIdx = fields.indexOf('r')
-          const gIdx = fields.indexOf('g')
-          const bIdx = fields.indexOf('b')
-          point.color = [
-            Math.floor(values[rIdx]),
-            Math.floor(values[gIdx]),
-            Math.floor(values[bIdx])
-          ]
+      if (isBinary) {
+        throw new Error('Binary PCD format is not yet supported. Please use ASCII PCD format.')
+      }
+      
+      // Parse points with error handling for corrupted data
+      const points: Point3D[] = []
+      for (let i = dataStart; i < lines.length; i++) {
+        const line = lines[i].trim()
+        if (!line || line.startsWith('#')) continue // Skip empty and comment lines
+        
+        try {
+          const values = line.split(/\s+/).map(v => {
+            const num = parseFloat(v)
+            return isNaN(num) ? 0 : num // Replace NaN with 0
+          })
+          
+          // Skip lines with insufficient data
+          if (values.length < 3) {
+            skippedLines++
+            continue
+          }
+          
+          // Validate coordinates (skip if invalid)
+          if (!isFinite(values[0]) || !isFinite(values[1]) || !isFinite(values[2])) {
+            skippedLines++
+            continue
+          }
+          
+          const point: Point3D = {
+            x: values[0],
+            y: values[1],
+            z: values[2],
+          }
+          
+          // Handle intensity with validation
+          if (hasIntensity && fields.length > 0) {
+            const intensityIdx = fields.indexOf('intensity')
+            if (intensityIdx >= 0 && intensityIdx < values.length && isFinite(values[intensityIdx])) {
+              point.intensity = values[intensityIdx]
+            }
+          }
+          
+          // Handle RGB color with validation
+          if (hasColor && fields.length > 0) {
+            try {
+              if (fields.includes('rgb')) {
+                const rgbIdx = fields.indexOf('rgb')
+                if (rgbIdx >= 0 && rgbIdx < values.length) {
+                  const rgb = values[rgbIdx]
+                  point.color = this.unpackRGB(rgb)
+                }
+              } else if (fields.includes('r') && fields.includes('g') && fields.includes('b')) {
+                const rIdx = fields.indexOf('r')
+                const gIdx = fields.indexOf('g')
+                const bIdx = fields.indexOf('b')
+                if (rIdx < values.length && gIdx < values.length && bIdx < values.length) {
+                  point.color = [
+                    Math.min(255, Math.max(0, Math.floor(values[rIdx]))),
+                    Math.min(255, Math.max(0, Math.floor(values[gIdx]))),
+                    Math.min(255, Math.max(0, Math.floor(values[bIdx])))
+                  ]
+                }
+              }
+            } catch (e) {
+              // Skip color if parsing fails
+            }
+          }
+          
+          points.push(point)
+        } catch (e) {
+          // Skip corrupted lines
+          skippedLines++
+          continue
         }
       }
       
-      points.push(point)
+      if (points.length === 0) {
+        throw new Error('No valid points found in PCD file. File may be corrupted.')
+      }
+      
+      if (skippedLines > 0) {
+        console.warn(`Skipped ${skippedLines} corrupted or invalid lines during PCD parsing`)
+      }
+      
+      return this.createPointCloud(file, points, 'PCD', hasColor, hasIntensity)
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('No valid points')) {
+        throw error
+      }
+      throw new Error(`Failed to parse PCD file: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
-    
-    return this.createPointCloud(file, points, 'PCD', hasColor, hasIntensity)
   }
 
   private static async parsePLY(file: File): Promise<PointCloud> {
@@ -140,115 +185,211 @@ export class PointCloudParser {
       throw new Error('Binary PLY format is not yet supported. Please use ASCII PLY format.')
     }
     
-    // Parse vertices
+    // Parse vertices with error handling
     const points: Point3D[] = []
     let currentLine = dataStart
+    let skippedVertices = 0
+    
     for (let i = 0; i < numVertices && currentLine < lines.length; i++, currentLine++) {
       const line = lines[currentLine].trim()
-      if (!line) {
+      if (!line || line.startsWith('#')) {
         i--
         continue
       }
       
-      const values = line.split(/\s+/).map(parseFloat)
-      if (values.length < 3) continue
-      
-      const point: Point3D = {
-        x: values[0],
-        y: values[1],
-        z: values[2],
-      }
-      
-      // Handle color
-      if (hasColor && values.length >= 6) {
-        point.color = [
-          Math.floor(values[3]),
-          Math.floor(values[4]),
-          Math.floor(values[5])
-        ]
-      }
-      
-      // Handle intensity
-      if (hasIntensity) {
-        const intensityIdx = properties.indexOf('intensity')
-        if (intensityIdx >= 0 && values[intensityIdx] !== undefined) {
-          point.intensity = values[intensityIdx]
+      try {
+        const values = line.split(/\s+/).map(v => {
+          const num = parseFloat(v)
+          return isNaN(num) ? 0 : num
+        })
+        
+        if (values.length < 3) {
+          skippedVertices++
+          continue
         }
+        
+        // Validate coordinates
+        if (!isFinite(values[0]) || !isFinite(values[1]) || !isFinite(values[2])) {
+          skippedVertices++
+          continue
+        }
+        
+        const point: Point3D = {
+          x: values[0],
+          y: values[1],
+          z: values[2],
+        }
+        
+        // Handle color with validation
+        if (hasColor && values.length >= 6) {
+          point.color = [
+            Math.min(255, Math.max(0, Math.floor(values[3]))),
+            Math.min(255, Math.max(0, Math.floor(values[4]))),
+            Math.min(255, Math.max(0, Math.floor(values[5])))
+          ]
+        }
+        
+        // Handle intensity with validation
+        if (hasIntensity) {
+          const intensityIdx = properties.indexOf('intensity')
+          if (intensityIdx >= 0 && intensityIdx < values.length && isFinite(values[intensityIdx])) {
+            point.intensity = values[intensityIdx]
+          }
+        }
+        
+        points.push(point)
+      } catch (e) {
+        skippedVertices++
+        continue
       }
-      
-      points.push(point)
     }
     
-    // Parse faces
+    if (points.length === 0) {
+      throw new Error('No valid vertices found in PLY file. File may be corrupted.')
+    }
+    
+    if (skippedVertices > 0) {
+      console.warn(`Skipped ${skippedVertices} corrupted vertices during PLY parsing`)
+    }
+    
+    // Parse faces with error handling
     const faces: Face[] = []
+    let skippedFaces = 0
+    
     for (let i = 0; i < numFaces && currentLine < lines.length; i++, currentLine++) {
       const line = lines[currentLine].trim()
-      if (!line) {
+      if (!line || line.startsWith('#')) {
         i--
         continue
       }
       
-      const values = line.split(/\s+/).map(v => parseInt(v))
-      if (values.length < 4) continue
-      
-      const numVerticesInFace = values[0]
-      if (numVerticesInFace === 3) {
-        // Triangle face
-        faces.push({
-          vertices: [values[1], values[2], values[3]]
+      try {
+        const values = line.split(/\s+/).map(v => {
+          const num = parseInt(v)
+          return isNaN(num) ? 0 : num
         })
-      } else if (numVerticesInFace === 4) {
-        // Quad face - split into two triangles
-        faces.push({
-          vertices: [values[1], values[2], values[3]]
-        })
-        faces.push({
-          vertices: [values[1], values[3], values[4]]
-        })
+        
+        if (values.length < 4) {
+          skippedFaces++
+          continue
+        }
+        
+        const numVerticesInFace = values[0]
+        
+        // Validate face indices
+        const validateIndex = (idx: number) => idx >= 0 && idx < points.length
+        
+        if (numVerticesInFace === 3 && values.length >= 4) {
+          if (validateIndex(values[1]) && validateIndex(values[2]) && validateIndex(values[3])) {
+            faces.push({
+              vertices: [values[1], values[2], values[3]]
+            })
+          } else {
+            skippedFaces++
+          }
+        } else if (numVerticesInFace === 4 && values.length >= 5) {
+          if (validateIndex(values[1]) && validateIndex(values[2]) && 
+              validateIndex(values[3]) && validateIndex(values[4])) {
+            // Quad face - split into two triangles
+            faces.push({
+              vertices: [values[1], values[2], values[3]]
+            })
+            faces.push({
+              vertices: [values[1], values[3], values[4]]
+            })
+          } else {
+            skippedFaces++
+          }
+        } else {
+          skippedFaces++
+        }
+      } catch (e) {
+        skippedFaces++
+        continue
       }
+    }
+    
+    if (skippedFaces > 0) {
+      console.warn(`Skipped ${skippedFaces} corrupted faces during PLY parsing`)
     }
     
     return this.createPointCloud(file, points, 'PLY', hasColor, hasIntensity, faces.length > 0 ? faces : undefined)
   }
 
   private static async parseXYZ(file: File): Promise<PointCloud> {
-    const text = await file.text()
-    const lines = text.split('\n')
-    
-    const points: Point3D[] = []
-    let hasColor = false
-    let hasIntensity = false
-    
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//')) continue
+    try {
+      const text = await file.text()
+      const lines = text.split('\n')
       
-      const values = trimmed.split(/\s+/).map(parseFloat)
-      if (values.length < 3) continue
+      const points: Point3D[] = []
+      let hasColor = false
+      let hasIntensity = false
+      let skippedLines = 0
       
-      const point: Point3D = {
-        x: values[0],
-        y: values[1],
-        z: values[2],
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//')) continue
+        
+        try {
+          const values = trimmed.split(/\s+/).map(v => {
+            const num = parseFloat(v)
+            return isNaN(num) ? 0 : num
+          })
+          
+          if (values.length < 3) {
+            skippedLines++
+            continue
+          }
+          
+          // Validate coordinates
+          if (!isFinite(values[0]) || !isFinite(values[1]) || !isFinite(values[2])) {
+            skippedLines++
+            continue
+          }
+          
+          const point: Point3D = {
+            x: values[0],
+            y: values[1],
+            z: values[2],
+          }
+          
+          // Check for intensity or color with validation
+          if (values.length === 4 && isFinite(values[3])) {
+            point.intensity = values[3]
+            hasIntensity = true
+          } else if (values.length >= 6) {
+            if (isFinite(values[3]) && isFinite(values[4]) && isFinite(values[5])) {
+              point.color = [
+                Math.min(255, Math.max(0, Math.floor(values[3]))),
+                Math.min(255, Math.max(0, Math.floor(values[4]))),
+                Math.min(255, Math.max(0, Math.floor(values[5])))
+              ]
+              hasColor = true
+            }
+          }
+          
+          points.push(point)
+        } catch (e) {
+          skippedLines++
+          continue
+        }
       }
       
-      // Check for intensity or color
-      if (values.length === 4) {
-        point.intensity = values[3]
-        hasIntensity = true
-      } else if (values.length >= 6) {
-        point.color = [
-          Math.floor(values[3]),
-          Math.floor(values[4]),
-          Math.floor(values[5])
-        ]
-        hasColor = true
+      if (points.length === 0) {
+        throw new Error('No valid points found in XYZ file. File may be corrupted.')
       }
       
-      points.push(point)
+      if (skippedLines > 0) {
+        console.warn(`Skipped ${skippedLines} corrupted or invalid lines during XYZ parsing`)
+      }
+      
+      return this.createPointCloud(file, points, 'XYZ', hasColor, hasIntensity)
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('No valid points')) {
+        throw error
+      }
+      throw new Error(`Failed to parse XYZ file: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
-    
-    return this.createPointCloud(file, points, 'XYZ', hasColor, hasIntensity)
   }
 
   private static createPointCloud(

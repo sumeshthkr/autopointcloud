@@ -150,6 +150,34 @@ export class PointCloudProcessor {
         processedPoints = subdivided.vertices
         processedFaces = subdivided.faces
         break
+      case 'mesh_to_pointcloud':
+        if (!pointCloud.isMesh || !pointCloud.faces) {
+          throw new Error('Mesh to point cloud conversion requires mesh data')
+        }
+        processedPoints = MeshProcessor.meshToPointCloud(
+          pointCloud.points,
+          pointCloud.faces,
+          options.threshold ? 'uniform' : 'vertices',
+          options.threshold ? Math.floor(options.threshold) : undefined
+        )
+        processedFaces = undefined // Remove faces when converting to point cloud
+        break
+      case 'pointcloud_to_mesh':
+        if (pointCloud.isMesh) {
+          throw new Error('Point cloud to mesh conversion requires point cloud data (not mesh)')
+        }
+        const meshResult = MeshProcessor.pointCloudToMesh(
+          pointCloud.points,
+          options.threshold && options.threshold > 1 ? 'ball_pivoting' : 'greedy',
+          {
+            searchRadius: options.searchRadius || 0.1,
+            maxNearestNeighbors: options.kNeighbors || 100,
+            ballRadius: options.radius || 0.05
+          }
+        )
+        processedPoints = meshResult.vertices
+        processedFaces = meshResult.faces
+        break
       default:
         throw new Error(`Unknown filter type: ${options.filterType}`)
     }

@@ -34,13 +34,21 @@ export interface PointCloud {
   faces?: Face[]
   numFaces?: number
   isMesh: boolean
+  // Transformation support
+  transformMatrix?: number[][] // 4x4 transformation matrix
+  metadata?: {
+    originalFormat?: string
+    compressionRatio?: number
+    processingTime?: number
+  }
 }
 
 export interface ProcessingOptions {
   filterType: 'downsample' | 'statistical_outlier' | 'radius_outlier' | 'intensity' | 'distance' | 'passthrough_x' | 'passthrough_y' | 'passthrough_z' | 
     'bilateral' | 'conditional' | 'crop_box' | 'mls_smoothing' | 
     'normal_estimation' | 'plane_segmentation' | 'euclidean_clustering' |
-    'region_growing' | 'mesh_smoothing' | 'mesh_decimation' | 'mesh_subdivision'
+    'region_growing' | 'mesh_smoothing' | 'mesh_decimation' | 'mesh_subdivision' |
+    'mesh_to_pointcloud' | 'pointcloud_to_mesh'
   voxelSize?: number
   threshold?: number
   minValue?: number

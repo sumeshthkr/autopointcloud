@@ -716,4 +716,107 @@ export class MeshProcessor {
   private static getEdgeKey(v1: number, v2: number): string {
     return v1 < v2 ? `${v1}-${v2}` : `${v2}-${v1}`
   }
+
+  // ============================================================================
+  // MESH-TO-POINT-CLOUD CONVERSION
+  // ============================================================================
+
+  /**
+   * Convert a mesh to a point cloud by sampling points from mesh surfaces
+   * Options:
+   * - vertices: Just use mesh vertices as points (fast)
+   * - uniform: Uniformly sample points across mesh surface (better representation)
+   */
+  static meshToPointCloud(
+    vertices: Point3D[],
+    faces: Face[],
+    samplingMethod: 'vertices' | 'uniform' = 'vertices',
+    targetPoints?: number
+  ): Point3D[] {
+    if (samplingMethod === 'vertices') {
+      // Simple: just return the mesh vertices as points
+      return vertices.map(v => ({ ...v }))
+    }
+
+    // Uniform sampling: sample points uniformly across triangle surfaces
+    const pointsPerFace = targetPoints 
+      ? Math.ceil(targetPoints / faces.length)
+      : 10 // default 10 points per face
+
+    const sampledPoints: Point3D[] = []
+
+    for (const face of faces) {
+      const v1 = vertices[face.vertices[0]]
+      const v2 = vertices[face.vertices[1]]
+      const v3 = vertices[face.vertices[2]]
+
+      // Sample points within the triangle
+      for (let i = 0; i < pointsPerFace; i++) {
+        // Generate random barycentric coordinates
+        let r1 = Math.random()
+        let r2 = Math.random()
+        
+        // Ensure point is inside triangle
+        if (r1 + r2 > 1) {
+          r1 = 1 - r1
+          r2 = 1 - r2
+        }
+        
+        const r3 = 1 - r1 - r2
+
+        // Compute point using barycentric coordinates
+        const point: Point3D = {
+          x: r1 * v1.x + r2 * v2.x + r3 * v3.x,
+          y: r1 * v1.y + r2 * v2.y + r3 * v3.y,
+          z: r1 * v1.z + r2 * v2.z + r3 * v3.z
+        }
+
+        // Interpolate color if available
+        if (v1.color && v2.color && v3.color) {
+          point.color = [
+            Math.floor(r1 * v1.color[0] + r2 * v2.color[0] + r3 * v3.color[0]),
+            Math.floor(r1 * v1.color[1] + r2 * v2.color[1] + r3 * v3.color[1]),
+            Math.floor(r1 * v1.color[2] + r2 * v2.color[2] + r3 * v3.color[2])
+          ]
+        }
+
+        sampledPoints.push(point)
+      }
+    }
+
+    return sampledPoints
+  }
+
+  /**
+   * Convert a point cloud to a mesh using existing surface reconstruction
+   * This wraps the greedy projection or ball pivoting methods
+   */
+  static pointCloudToMesh(
+    points: Point3D[],
+    method: 'greedy' | 'ball_pivoting' = 'greedy',
+    options?: {
+      searchRadius?: number
+      maxNearestNeighbors?: number
+      ballRadius?: number
+    }
+  ): { vertices: Point3D[], faces: Face[] } {
+    if (method === 'greedy') {
+      return {
+        vertices: points,
+        faces: this.greedyProjectionTriangulation(
+          points,
+          options?.searchRadius || 0.1,
+          options?.maxNearestNeighbors || 100
+        )
+      }
+    } else {
+      return {
+        vertices: points,
+        faces: this.ballPivoting(
+          points,
+          options?.ballRadius || 0.05
+        )
+      }
+    }
+  }
 }
