@@ -5,6 +5,7 @@ export interface Point3D {
   intensity?: number
   color?: [number, number, number]
   normal?: [number, number, number]
+  classification?: number // LAS/LAZ classification value (0-255)
 }
 
 export interface Face {

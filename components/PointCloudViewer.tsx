@@ -12,43 +12,86 @@ interface PointCloudViewerProps {
   hasIntensity: boolean
   faces?: Face[]
   isMesh?: boolean
+  cameraMode?: 'perspective' | 'orthographic' | 'top'
+  fov?: number
+  pointDensity?: number
+  colorMode?: 'height' | 'intensity' | 'rgb' | 'classification'
+  intensityRange?: [number, number]
+  zExaggeration?: number
+  pointSize?: number
+  showGrid?: boolean
+  showAxes?: boolean
 }
 
-function PointCloud({ points, hasColor, hasIntensity, faces, isMesh }: PointCloudViewerProps) {
+function PointCloud({ 
+  points, 
+  hasColor, 
+  hasIntensity, 
+  faces, 
+  isMesh,
+  pointDensity = 100,
+  colorMode = 'height',
+  intensityRange = [0, 1],
+  zExaggeration = 1.0
+}: PointCloudViewerProps) {
   const meshRef = useRef<THREE.Mesh>(null)
   const pointsRef = useRef<THREE.Points>(null)
   
-  const { positions, colors, indices, normals } = useMemo(() => {
-    const positions = new Float32Array(points.length * 3)
-    const colors = new Float32Array(points.length * 3)
+  const { positions, colors, indices, normals, sampledCount } = useMemo(() => {
+    // Apply point density sampling
+    const densityRatio = pointDensity / 100
+    const step = Math.max(1, Math.floor(1 / densityRatio))
+    const sampledPoints = points.filter((_, i) => i % step === 0)
+    const sampledCount = sampledPoints.length
+    
+    const positions = new Float32Array(sampledCount * 3)
+    const colors = new Float32Array(sampledCount * 3)
     
     // Calculate bounding box for height-based coloring
     let minZ = Infinity, maxZ = -Infinity
-    for (const point of points) {
+    for (const point of sampledPoints) {
       minZ = Math.min(minZ, point.z)
       maxZ = Math.max(maxZ, point.z)
     }
     const zRange = maxZ - minZ || 1
     
-    for (let i = 0; i < points.length; i++) {
-      const point = points[i]
+    for (let i = 0; i < sampledCount; i++) {
+      const point = sampledPoints[i]
       positions[i * 3] = point.x
       positions[i * 3 + 1] = point.y
-      positions[i * 3 + 2] = point.z
+      positions[i * 3 + 2] = point.z * zExaggeration // Apply z-exaggeration
       
-      if (hasColor && point.color) {
+      // Color based on selected mode
+      if (colorMode === 'rgb' && hasColor && point.color) {
         // Use actual RGB color
         colors[i * 3] = point.color[0] / 255
         colors[i * 3 + 1] = point.color[1] / 255
         colors[i * 3 + 2] = point.color[2] / 255
-      } else if (hasIntensity && point.intensity !== undefined) {
-        // Use intensity as grayscale
-        const intensity = point.intensity
-        colors[i * 3] = intensity
-        colors[i * 3 + 1] = intensity
-        colors[i * 3 + 2] = intensity
+      } else if (colorMode === 'intensity' && hasIntensity && point.intensity !== undefined) {
+        // Use intensity with range scaling
+        const normalizedIntensity = (point.intensity - intensityRange[0]) / (intensityRange[1] - intensityRange[0])
+        const clampedIntensity = Math.max(0, Math.min(1, normalizedIntensity))
+        colors[i * 3] = clampedIntensity
+        colors[i * 3 + 1] = clampedIntensity
+        colors[i * 3 + 2] = clampedIntensity
+      } else if (colorMode === 'classification' && point.classification !== undefined) {
+        // Simple classification coloring (can be expanded)
+        const classColors = [
+          [0.5, 0.5, 0.5], // 0: unclassified - gray
+          [0.6, 0.4, 0.2], // 1: ground - brown
+          [0.2, 0.8, 0.2], // 2: low vegetation - green
+          [0.1, 0.6, 0.1], // 3: medium vegetation - dark green
+          [0.0, 0.4, 0.0], // 4: high vegetation - darker green
+          [0.8, 0.2, 0.2], // 5: building - red
+          [0.7, 0.7, 0.0], // 6: low point - yellow
+          [0.0, 0.0, 0.8], // 7: water - blue
+        ]
+        const classColor = classColors[point.classification % classColors.length] || classColors[0]
+        colors[i * 3] = classColor[0]
+        colors[i * 3 + 1] = classColor[1]
+        colors[i * 3 + 2] = classColor[2]
       } else {
-        // Height-based gradient coloring (blue to red)
+        // Default: Height-based gradient coloring (blue to red)
         const t = (point.z - minZ) / zRange
         const r = Math.min(1, t * 2)
         const g = Math.min(1, 2 - Math.abs(t * 2 - 1) * 2)
@@ -107,8 +150,8 @@ function PointCloud({ points, hasColor, hasIntensity, faces, isMesh }: PointClou
       }
     }
     
-    return { positions, colors, indices, normals }
-  }, [points, hasColor, hasIntensity, faces, isMesh])
+    return { positions, colors, indices, normals, sampledCount }
+  }, [points, hasColor, hasIntensity, faces, isMesh, pointDensity, colorMode, intensityRange, zExaggeration])
   
   const geometry = useMemo(() => {
     const geom = new THREE.BufferGeometry()
@@ -157,7 +200,22 @@ function Grid() {
   )
 }
 
-export default function PointCloudViewer({ points, hasColor, hasIntensity, faces, isMesh }: PointCloudViewerProps) {
+export default function PointCloudViewer({ 
+  points, 
+  hasColor, 
+  hasIntensity, 
+  faces, 
+  isMesh,
+  cameraMode = 'perspective',
+  fov = 75,
+  pointDensity = 100,
+  colorMode = 'height',
+  intensityRange = [0, 1],
+  zExaggeration = 1.0,
+  pointSize = 3,
+  showGrid = true,
+  showAxes = true
+}: PointCloudViewerProps) {
   const [fps, setFps] = useState(60)
   
   // Calculate camera position based on bounding box
@@ -228,8 +286,8 @@ export default function PointCloudViewer({ points, hasColor, hasIntensity, faces
         <Canvas>
           <PerspectiveCamera
             makeDefault
-            position={cameraPosition}
-            fov={60}
+            position={cameraMode === 'top' ? [target[0], target[1], target[2] + cameraPosition[2]] : cameraPosition}
+            fov={fov}
           />
           <OrbitControls
             target={target}
@@ -237,11 +295,22 @@ export default function PointCloudViewer({ points, hasColor, hasIntensity, faces
             dampingFactor={0.05}
             minDistance={0.5}
             maxDistance={500}
+            enableRotate={cameraMode !== 'top'}
           />
           <ambientLight intensity={0.5} />
           <directionalLight position={[10, 10, 5]} intensity={1} />
           <directionalLight position={[-10, -10, -5]} intensity={0.3} />
-          <PointCloud points={points} hasColor={hasColor} hasIntensity={hasIntensity} faces={faces} isMesh={isMesh} />
+          <PointCloud 
+            points={points} 
+            hasColor={hasColor} 
+            hasIntensity={hasIntensity} 
+            faces={faces} 
+            isMesh={isMesh}
+            pointDensity={pointDensity}
+            colorMode={colorMode}
+            intensityRange={intensityRange}
+            zExaggeration={zExaggeration}
+          />
           <Grid />
           <FPSCounter setFps={setFps} />
         </Canvas>

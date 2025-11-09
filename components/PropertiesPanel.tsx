@@ -37,6 +37,19 @@ interface PropertiesPanelProps {
   onToggleGrid: () => void
   showAxes: boolean
   onToggleAxes: () => void
+  // New plas.io-inspired props
+  cameraMode?: 'perspective' | 'orthographic' | 'top'
+  onCameraModeChange?: (mode: 'perspective' | 'orthographic' | 'top') => void
+  fov?: number
+  onFovChange?: (fov: number) => void
+  pointDensity?: number
+  onPointDensityChange?: (density: number) => void
+  colorMode?: 'height' | 'intensity' | 'rgb' | 'classification'
+  onColorModeChange?: (mode: 'height' | 'intensity' | 'rgb' | 'classification') => void
+  intensityRange?: [number, number]
+  onIntensityRangeChange?: (range: [number, number]) => void
+  zExaggeration?: number
+  onZExaggerationChange?: (value: number) => void
 }
 
 export default function PropertiesPanel({
@@ -58,6 +71,18 @@ export default function PropertiesPanel({
   onToggleGrid,
   showAxes,
   onToggleAxes,
+  cameraMode = 'perspective',
+  onCameraModeChange,
+  fov = 75,
+  onFovChange,
+  pointDensity = 100,
+  onPointDensityChange,
+  colorMode = 'height',
+  onColorModeChange,
+  intensityRange = [0, 1],
+  onIntensityRangeChange,
+  zExaggeration = 1.0,
+  onZExaggerationChange,
 }: PropertiesPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [expandedSections, setExpandedSections] = useState<string[]>(['viewport', 'processing'])
@@ -179,9 +204,184 @@ export default function PropertiesPanel({
                     {showAxes ? 'ON' : 'OFF'}
                   </button>
                 </div>
+
+                {/* Camera Mode - inspired by plas.io */}
+                {onCameraModeChange && (
+                  <div>
+                    <label className="text-xs text-slate-400 mb-2 block">Camera Mode</label>
+                    <div className="grid grid-cols-3 gap-1">
+                      <button
+                        onClick={() => onCameraModeChange('perspective')}
+                        className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                          cameraMode === 'perspective'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        3D
+                      </button>
+                      <button
+                        onClick={() => onCameraModeChange('orthographic')}
+                        className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                          cameraMode === 'orthographic'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        2D
+                      </button>
+                      <button
+                        onClick={() => onCameraModeChange('top')}
+                        className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                          cameraMode === 'top'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        Top
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Field of View - only for perspective mode */}
+                {onFovChange && cameraMode === 'perspective' && (
+                  <div>
+                    <label className="text-xs text-slate-400 mb-2 block">Field of View</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min="30"
+                        max="120"
+                        step="5"
+                        value={fov}
+                        onChange={(e) => onFovChange(parseFloat(e.target.value))}
+                        className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      />
+                      <span className="text-xs font-mono text-slate-300 w-8">{fov}°</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Point Density */}
+                {onPointDensityChange && hasPointCloud && (
+                  <div>
+                    <label className="text-xs text-slate-400 mb-2 block">Point Density</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min="10"
+                        max="100"
+                        step="10"
+                        value={pointDensity}
+                        onChange={(e) => onPointDensityChange(parseFloat(e.target.value))}
+                        className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      />
+                      <span className="text-xs font-mono text-slate-300 w-12">{pointDensity}%</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">Lower for better performance</p>
+                  </div>
+                )}
+
+                {/* Z Exaggeration */}
+                {onZExaggerationChange && hasPointCloud && (
+                  <div>
+                    <label className="text-xs text-slate-400 mb-2 block">Z Exaggeration</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="5.0"
+                        step="0.5"
+                        value={zExaggeration}
+                        onChange={(e) => onZExaggerationChange(parseFloat(e.target.value))}
+                        className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      />
+                      <span className="text-xs font-mono text-slate-300 w-8">{zExaggeration}x</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">Emphasize height differences</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
+
+          {/* Colorization Settings - inspired by plas.io */}
+          {hasPointCloud && (
+            <div className="border-b border-slate-700">
+              <button
+                onClick={() => toggleSection('colorization')}
+                className="w-full px-3 py-2 flex items-center justify-between hover:bg-slate-800 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm font-medium text-slate-200">Colorization</span>
+                </div>
+                {expandedSections.includes('colorization') ? (
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                )}
+              </button>
+
+              {expandedSections.includes('colorization') && (
+                <div className="px-3 py-3 space-y-4 bg-slate-950">
+                  {/* Color Mode */}
+                  {onColorModeChange && (
+                    <div>
+                      <label className="text-xs text-slate-400 mb-2 block">Color By</label>
+                      <select
+                        value={colorMode}
+                        onChange={(e) => onColorModeChange(e.target.value as any)}
+                        className="w-full px-2 py-1.5 bg-slate-700 text-slate-200 text-xs rounded border border-slate-600 focus:outline-none focus:border-blue-500"
+                      >
+                        <option value="height">Height (Z-axis)</option>
+                        <option value="intensity">Intensity</option>
+                        <option value="rgb">RGB Color</option>
+                        <option value="classification">Classification</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Intensity Range */}
+                  {onIntensityRangeChange && colorMode === 'intensity' && (
+                    <div>
+                      <label className="text-xs text-slate-400 mb-2 block">Intensity Range</label>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-500 w-8">Min</span>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            value={intensityRange[0]}
+                            onChange={(e) => onIntensityRangeChange([parseFloat(e.target.value), intensityRange[1]])}
+                            className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                          />
+                          <span className="text-xs font-mono text-slate-300 w-8">{intensityRange[0].toFixed(1)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-500 w-8">Max</span>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            value={intensityRange[1]}
+                            onChange={(e) => onIntensityRangeChange([intensityRange[0], parseFloat(e.target.value)])}
+                            className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                          />
+                          <span className="text-xs font-mono text-slate-300 w-8">{intensityRange[1].toFixed(1)}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">Adjust intensity scaling</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Processing Settings */}
           {hasPointCloud && !isMesh && (
