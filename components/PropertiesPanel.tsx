@@ -2,17 +2,10 @@
 
 import { useState } from 'react'
 import { 
-  Settings,
-  Sliders,
   Palette,
   Camera,
-  Ruler,
-  Grid3x3,
-  Sun,
   ChevronDown,
   ChevronRight,
-  Maximize2,
-  RotateCw,
   Download,
   Cpu
 } from 'lucide-react'
@@ -332,7 +325,7 @@ export default function PropertiesPanel({
                       <label className="text-xs text-slate-400 mb-2 block">Color By</label>
                       <select
                         value={colorMode}
-                        onChange={(e) => onColorModeChange(e.target.value as any)}
+                        onChange={(e) => onColorModeChange(e.target.value as 'height' | 'intensity' | 'rgb' | 'classification')}
                         className="w-full px-2 py-1.5 bg-slate-700 text-slate-200 text-xs rounded border border-slate-600 focus:outline-none focus:border-blue-500"
                       >
                         <option value="height">Height (Z-axis)</option>
