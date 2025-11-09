@@ -41,6 +41,9 @@ export default function Home() {
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [error, setError] = useState<string | null>(null)
+  const [loadingProgress, setLoadingProgress] = useState<number>(0)
+  const [loadingMessage, setLoadingMessage] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(false)
   
   // UI State
   const [showComparison, setShowComparison] = useState(false)
@@ -74,15 +77,33 @@ export default function Home() {
   // Get selected point cloud
   const selectedPointCloud = pointClouds.find(pc => pc.id === selectedId)
 
-  // File upload handler
+  // File upload handler with chunked loading for large files
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
     
     setError(null)
+    setIsLoading(true)
+    setLoadingProgress(0)
+    setLoadingMessage('Loading file...')
     
     try {
-      const cloud = await PointCloudParser.parseFile(file)
+      let cloud: PointCloud
+      
+      // Use chunked loading for large files (> 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        const { ChunkedFileLoader } = await import('@/lib/chunked-loader')
+        cloud = await ChunkedFileLoader.loadFileInChunks(file, {
+          chunkSize: 100000,
+          onProgress: (progress, message) => {
+            setLoadingProgress(progress)
+            setLoadingMessage(message)
+          }
+        })
+      } else {
+        cloud = await PointCloudParser.parseFile(file)
+      }
+      
       const newItem: PointCloudItem = {
         id: Date.now().toString(),
         name: cloud.name,
@@ -96,6 +117,10 @@ export default function Home() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse file')
       console.error('Parse error:', err)
+    } finally {
+      setIsLoading(false)
+      setLoadingProgress(0)
+      setLoadingMessage('')
     }
   }, [pointClouds, saveToHistory])
 
@@ -435,6 +460,24 @@ export default function Home() {
                     />
                   )
                 ))}
+                
+                {/* Loading Indicator */}
+                {isLoading && (
+                  <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center z-50">
+                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 max-w-md w-full mx-4">
+                      <div className="space-y-3">
+                        <p className="text-sm font-medium text-slate-200">{loadingMessage}</p>
+                        <div className="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+                          <div 
+                            className="bg-blue-600 h-full transition-all duration-300"
+                            style={{ width: `${loadingProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-slate-400 text-right">{Math.round(loadingProgress)}%</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {error && (
                   <div className="absolute top-4 left-1/2 -translate-x-1/2 max-w-md p-3 bg-red-900/90 border border-red-800 rounded-lg text-sm text-red-400 shadow-lg">
