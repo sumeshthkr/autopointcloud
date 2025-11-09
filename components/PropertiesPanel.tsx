@@ -79,6 +79,8 @@ export default function PropertiesPanel({
     { value: 'passthrough_z', label: 'PassThrough Z' },
     { value: 'intensity', label: 'Intensity Filter' },
     { value: 'distance', label: 'Distance Filter' },
+    { value: 'mesh_to_pointcloud', label: 'Mesh → Point Cloud', disabled: !isMesh },
+    { value: 'pointcloud_to_mesh', label: 'Point Cloud → Mesh', disabled: isMesh },
   ]
 
   return (
@@ -210,7 +212,9 @@ export default function PropertiesPanel({
                       className="w-full px-2 py-1.5 text-xs bg-slate-800 text-slate-200 border border-slate-700 rounded focus:outline-none focus:border-blue-500"
                     >
                       {processingOptions.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        <option key={opt.value} value={opt.value} disabled={'disabled' in opt && opt.disabled}>
+                          {opt.label}
+                        </option>
                       ))}
                     </select>
                   </div>
