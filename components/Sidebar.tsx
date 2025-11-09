@@ -51,7 +51,7 @@ export default function Sidebar({
   }
 
   return (
-    <div className={`bg-slate-900 border-r border-slate-700 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-12' : 'w-80'}`}>
+    <div className={`bg-slate-900 border-r border-slate-700 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-12' : 'w-80 md:w-80 w-64'}`}>
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-slate-700">
         {!isCollapsed && (

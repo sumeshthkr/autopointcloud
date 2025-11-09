@@ -328,19 +328,19 @@ export default function Home() {
     <div className="min-h-screen bg-slate-950 flex flex-col">
       {/* Header */}
       <header className="bg-slate-900 border-b border-slate-700">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-400 rounded-lg flex items-center justify-center">
-              <Cloud className="w-5 h-5 text-white" />
+        <div className="px-2 sm:px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-blue-600 to-blue-400 rounded-lg flex items-center justify-center">
+              <Cloud className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+              <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
                 AutoPointCloud
               </h1>
-              <p className="text-[10px] text-slate-500">Professional Point Cloud Processing</p>
+              <p className="text-[10px] text-slate-500 hidden sm:block">Professional Point Cloud Processing</p>
             </div>
           </div>
-          <div className="text-sm text-slate-400">
+          <div className="text-xs sm:text-sm text-slate-400">
             {selectedPointCloud && (
               <span className="font-mono">
                 {formatNumber(selectedPointCloud.pointCloud.numPoints)} {selectedPointCloud.pointCloud.isMesh ? 'vertices' : 'points'}
@@ -406,28 +406,15 @@ export default function Home() {
             <div 
               onDrop={handleDrop}
               onDragOver={handleDragOver}
-              className="flex-1 flex items-center justify-center p-8 bg-slate-900"
+              className="flex-1 flex items-center justify-center bg-slate-900"
             >
-              <div className="text-center max-w-md">
-                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-400 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Cloud className="w-12 h-12 text-white" />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-200 mb-2">Welcome to AutoPointCloud</h2>
-                <p className="text-slate-400 mb-6">
-                  Professional point cloud and 3D mesh processing in your browser
+              <div className="text-center">
+                <p className="text-sm text-slate-500">
+                  No point cloud loaded
                 </p>
-                <div className="border-2 border-dashed border-slate-700 rounded-lg p-8 hover:border-blue-500 transition-colors cursor-pointer">
-                  <Upload className="w-12 h-12 mx-auto mb-4 text-slate-500" />
-                  <p className="text-sm font-medium text-slate-300 mb-1">
-                    Drop file here or use sidebar to upload
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Supports PCD, PLY, XYZ, OBJ, STL formats
-                  </p>
-                </div>
                 
                 {error && (
-                  <div className="mt-4 p-3 bg-red-900/20 border border-red-800 rounded-lg text-sm text-red-400">
+                  <div className="mt-4 p-3 bg-red-900/20 border border-red-800 rounded-lg text-sm text-red-400 max-w-md">
                     {error}
                   </div>
                 )}
